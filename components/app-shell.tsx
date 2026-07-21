@@ -14,6 +14,7 @@ import {
   UsersRound,
   Megaphone,
   Settings,
+  ClipboardList,
   LogOut,
   Menu,
   X,
@@ -32,6 +33,7 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/owner", label: "ภาพรวมระบบ", icon: LayoutDashboard },
     { href: "/owner/trainers", label: "เทรนเนอร์", icon: Users },
     { href: "/owner/clients", label: "ลูกเทรนทั้งหมด", icon: UsersRound },
+    { href: "/owner/reports", label: "รายงาน", icon: ClipboardList },
     { href: "/owner/broadcast", label: "ประกาศ", icon: Megaphone },
     { href: "/owner/settings", label: "ตั้งค่าเว็บไซต์", icon: Settings },
   ],
@@ -39,6 +41,7 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/trainer", label: "แดชบอร์ด", icon: LayoutDashboard },
     { href: "/trainer/clients", label: "ลูกเทรน", icon: Users },
     { href: "/trainer/schedule", label: "ตารางเทรน", icon: CalendarDays },
+    { href: "/trainer/reports", label: "รายงาน", icon: ClipboardList },
     { href: "/trainer/food-review", label: "ตรวจอาหาร", icon: UtensilsCrossed },
   ],
   CLIENT: [

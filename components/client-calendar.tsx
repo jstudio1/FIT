@@ -14,6 +14,7 @@ export type SlotStatus =
   | "MINE"
   | "TAKEN"
   | "BLOCKED"
+  | "RECURRING"
   | "PAST"
   | "CLOSED";
 
@@ -208,6 +209,12 @@ function SlotCell({
           ปิด
         </div>
       );
+    case "RECURRING":
+      return (
+        <div className={cn(base, "bg-amber-100 text-amber-700")}>
+          พักประจำ
+        </div>
+      );
     case "CLOSED":
       return <div className={cn(base, "text-muted-foreground/50")}>—</div>;
     case "PAST":
@@ -222,6 +229,7 @@ function Legend() {
     { label: "ของคุณ", cls: "bg-primary" },
     { label: "ไม่ว่าง", cls: "bg-muted" },
     { label: "ปิด", cls: "bg-muted" },
+    { label: "พักประจำวัน", cls: "bg-amber-100" },
   ];
   return (
     <div className="flex flex-wrap gap-4 mt-3 text-xs text-muted-foreground">

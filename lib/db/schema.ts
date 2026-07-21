@@ -58,6 +58,8 @@ export const trainerSettings = mysqlTable("trainer_settings", {
     .primaryKey()
     .references(() => users.id),
   bookingOpen: boolean("booking_open").notNull().default(true),
+  openHour: int("open_hour").notNull().default(8),
+  closeHour: int("close_hour").notNull().default(20),
 });
 
 /* ---------------- Bookings (ตารางจอง) ---------------- */
@@ -96,6 +98,35 @@ export const blockedSlots = mysqlTable(
   },
   (t) => [unique("uniq_block").on(t.trainerId, t.date, t.hour)],
 );
+
+/* ---------------- Recurring breaks (ช่วงเวลาที่ไม่รับเทรนทุกวัน เช่น พักเที่ยง) ---------------- */
+export const recurringBreaks = mysqlTable(
+  "recurring_breaks",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    trainerId: int("trainer_id")
+      .notNull()
+      .references(() => users.id),
+    hour: int("hour").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique("uniq_trainer_hour").on(t.trainerId, t.hour)],
+);
+
+/* ---------------- Booking cancellations (log ประวัติการยกเลิก — bookings ถูกลบตอนยกเลิกจริง) ---------------- */
+export const bookingCancellations = mysqlTable("booking_cancellations", {
+  id: int("id").autoincrement().primaryKey(),
+  trainerId: int("trainer_id")
+    .notNull()
+    .references(() => users.id),
+  clientId: int("client_id")
+    .notNull()
+    .references(() => users.id),
+  date: date("date", { mode: "string" }).notNull(),
+  hour: int("hour").notNull(),
+  cancelledBy: mysqlEnum("cancelled_by", ["CLIENT", "TRAINER"]).notNull(),
+  cancelledAt: timestamp("cancelled_at").notNull().defaultNow(),
+});
 
 /* ---------------- Session results (ผลลัพธ์การเทรน) ---------------- */
 export const sessionResults = mysqlTable("session_results", {
@@ -136,6 +167,9 @@ export const foodComments = mysqlTable("food_comments", {
     .references(() => users.id),
   comment: text("comment"),
   calories: int("calories"),
+  carbs: int("carbs"), // กรัม
+  protein: int("protein"), // กรัม
+  fat: int("fat"), // กรัม
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -1,15 +1,23 @@
 import { addDays } from "date-fns";
 import { and, eq, gte, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { bookings, blockedSlots, trainerSettings } from "@/lib/db/schema";
+import {
+  bookings,
+  blockedSlots,
+  recurringBreaks,
+  trainerSettings,
+} from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
 import {
-  HOURS,
+  getHoursRange,
   getWeekDays,
   weekStart,
   toDateStr,
   isPastSlot,
   canCancelSlot,
+  hourLabel,
+  OPEN_HOUR,
+  CLOSE_HOUR,
 } from "@/lib/schedule";
 import { PageHeader } from "@/components/page-header";
 import { ClientCalendar, type Slot } from "@/components/client-calendar";
@@ -39,7 +47,10 @@ export default async function ClientSchedulePage({
 
   const bookedMap = new Map<string, { clientId: number; bookingId: number }>();
   const blockedSet = new Set<string>();
+  let recurringHourSet = new Set<number>();
   let bookingOpen = true;
+  let openHour = OPEN_HOUR;
+  let closeHour = CLOSE_HOUR;
 
   if (trainerId) {
     const rangeStart = days[0].dateStr;
@@ -73,24 +84,35 @@ export default async function ClientSchedulePage({
       );
     for (const b of blks) blockedSet.add(`${b.date}_${b.hour}`);
 
+    const recurRows = await db
+      .select({ hour: recurringBreaks.hour })
+      .from(recurringBreaks)
+      .where(eq(recurringBreaks.trainerId, trainerId));
+    recurringHourSet = new Set(recurRows.map((r) => r.hour));
+
     const [setting] = await db
       .select()
       .from(trainerSettings)
       .where(eq(trainerSettings.trainerId, trainerId))
       .limit(1);
-    if (setting) bookingOpen = setting.bookingOpen;
+    if (setting) {
+      bookingOpen = setting.bookingOpen;
+      openHour = setting.openHour;
+      closeHour = setting.closeHour;
+    }
   }
+
+  const hours = getHoursRange(openHour, closeHour);
 
   const slots: Record<string, Slot> = {};
   for (const d of days) {
-    for (const h of HOURS) {
+    for (const h of hours) {
       const key = `${d.dateStr}_${h}`;
       let slot: Slot;
       if (isPastSlot(d.dateStr, h, now)) {
         slot = { status: "PAST" };
-      } else if (blockedSet.has(key)) {
-        slot = { status: "BLOCKED" };
       } else if (bookedMap.has(key)) {
+        // นัดที่มีอยู่แล้วต้องแสดงถูกต้องเสมอ แม้ชั่วโมงนี้จะกลายเป็นพักประจำ/ปิดในภายหลัง
         const b = bookedMap.get(key)!;
         if (b.clientId === client.id) {
           slot = {
@@ -101,6 +123,10 @@ export default async function ClientSchedulePage({
         } else {
           slot = { status: "TAKEN" };
         }
+      } else if (recurringHourSet.has(h)) {
+        slot = { status: "RECURRING" };
+      } else if (blockedSet.has(key)) {
+        slot = { status: "BLOCKED" };
       } else if (!bookingOpen) {
         slot = { status: "CLOSED" };
       } else {
@@ -114,7 +140,7 @@ export default async function ClientSchedulePage({
     <>
       <PageHeader
         title="จองเวลาเทรน"
-        description="เลือกช่องเวลาที่ว่าง (จันทร์–อาทิตย์ 08:00–20:00) · ยกเลิกได้ก่อนเวลาอย่างน้อย 6 ชม."
+        description={`เลือกช่องเวลาที่ว่าง (จันทร์–อาทิตย์ ${hourLabel(openHour)}–${hourLabel(closeHour)}) · ยกเลิกได้ก่อนเวลาอย่างน้อย 6 ชม.`}
       />
       {!trainerId ? (
         <div className="rounded-[var(--radius-lg)] border border-dashed border-border bg-card p-8 text-center text-muted-foreground">
@@ -127,7 +153,7 @@ export default async function ClientSchedulePage({
             dayShort: d.dayShort,
             dayNum: d.dayNum,
           }))}
-          hours={HOURS}
+          hours={hours}
           slots={slots}
           bookingOpen={bookingOpen}
           prevWeek={prevWeek}

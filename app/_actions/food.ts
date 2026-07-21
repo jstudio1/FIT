@@ -8,18 +8,32 @@ import { requireRole } from "@/lib/authz";
 
 export type Res = { error?: string; success?: string };
 
+export type FoodCommentInput = {
+  comment: string | null;
+  calories: number | null;
+  carbs: number | null;
+  protein: number | null;
+  fat: number | null;
+};
+
+function cleanNum(n: number | null): number | null {
+  return n != null && Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
+}
+
 export async function commentFoodAction(
   foodLogId: number,
-  comment: string | null,
-  calories: number | null,
+  input: FoodCommentInput,
 ): Promise<Res> {
   const trainer = await requireRole("TRAINER");
 
-  const cleanComment = comment?.trim() || null;
-  const cleanCalories =
-    calories != null && Number.isFinite(calories) ? calories : null;
-  if (!cleanComment && cleanCalories == null) {
-    return { error: "ใส่คอมเมนต์หรือปริมาณแคลอรี่อย่างน้อยอย่างหนึ่ง" };
+  const cleanComment = input.comment?.trim() || null;
+  const calories = cleanNum(input.calories);
+  const carbs = cleanNum(input.carbs);
+  const protein = cleanNum(input.protein);
+  const fat = cleanNum(input.fat);
+
+  if (!cleanComment && calories == null && carbs == null && protein == null && fat == null) {
+    return { error: "ใส่คอมเมนต์หรือข้อมูลโภชนาการอย่างน้อยหนึ่งอย่าง" };
   }
 
   // ตรวจสิทธิ์: รูปนี้ต้องเป็นของลูกเทรนของเทรนเนอร์คนนี้
@@ -35,19 +49,23 @@ export async function commentFoodAction(
     foodLogId,
     trainerId: trainer.id,
     comment: cleanComment,
-    calories: cleanCalories,
+    calories,
+    carbs,
+    protein,
+    fat,
   });
 
   await db.insert(notifications).values({
     userId: row.clientId,
     type: "food",
     title: "เทรนเนอร์ตรวจอาหารแล้ว",
-    message: cleanCalories
-      ? `เทรนเนอร์คอมเมนต์อาหารของคุณ (~${cleanCalories} แคล)`
+    message: calories
+      ? `เทรนเนอร์คอมเมนต์อาหารของคุณ (~${calories} แคล)`
       : "เทรนเนอร์คอมเมนต์อาหารของคุณ",
   });
 
   revalidatePath("/trainer/food-review");
+  revalidatePath("/trainer/clients");
   revalidatePath("/client/food");
-  return { success: "บันทึกคอมเมนต์แล้ว" };
+  return { success: "บันทึกข้อมูลโภชนาการแล้ว" };
 }

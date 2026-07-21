@@ -1,17 +1,30 @@
 import { addDays } from "date-fns";
-import { and, eq, gte, lte } from "drizzle-orm";
+import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { bookings, blockedSlots, trainerSettings, users } from "@/lib/db/schema";
+import {
+  bookings,
+  blockedSlots,
+  recurringBreaks,
+  trainerSettings,
+  users,
+} from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
 import {
-  HOURS,
+  getHoursRange,
   getWeekDays,
   weekStart,
   toDateStr,
   isPastSlot,
+  groupConsecutiveHours,
+  OPEN_HOUR,
+  CLOSE_HOUR,
 } from "@/lib/schedule";
 import { PageHeader } from "@/components/page-header";
 import { TrainerCalendar, type TSlot } from "@/components/trainer-calendar";
+import {
+  TrainerScheduleSettings,
+  type BlockedDayGroup,
+} from "@/components/trainer-schedule-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +48,16 @@ export default async function TrainerSchedulePage({
   const rangeStart = days[0].dateStr;
   const rangeEnd = days[6].dateStr;
   const now = new Date();
+
+  const [setting] = await db
+    .select()
+    .from(trainerSettings)
+    .where(eq(trainerSettings.trainerId, trainer.id))
+    .limit(1);
+  const bookingOpen = setting ? setting.bookingOpen : true;
+  const openHour = setting?.openHour ?? OPEN_HOUR;
+  const closeHour = setting?.closeHour ?? CLOSE_HOUR;
+  const hours = getHoursRange(openHour, closeHour);
 
   const bks = await db
     .select({
@@ -71,16 +94,33 @@ export default async function TrainerSchedulePage({
     );
   const blockedSet = new Set(blks.map((b) => `${b.date}_${b.hour}`));
 
-  const [setting] = await db
-    .select()
-    .from(trainerSettings)
-    .where(eq(trainerSettings.trainerId, trainer.id))
-    .limit(1);
-  const bookingOpen = setting ? setting.bookingOpen : true;
+  const recurRows = await db
+    .select({ hour: recurringBreaks.hour })
+    .from(recurringBreaks)
+    .where(eq(recurringBreaks.trainerId, trainer.id));
+  const recurringHourSet = new Set(recurRows.map((r) => r.hour));
+  const recurringRanges = groupConsecutiveHours(recurRows.map((r) => r.hour));
+
+  // ช่วงที่ปิดรับอยู่ตอนนี้ (วันนี้เป็นต้นไป) — สำหรับแผงตั้งค่า
+  const today = toDateStr(now);
+  const blockedGroupsRaw = await db
+    .select({ date: blockedSlots.date, cnt: sql<number>`count(*)` })
+    .from(blockedSlots)
+    .where(
+      and(eq(blockedSlots.trainerId, trainer.id), gte(blockedSlots.date, today)),
+    )
+    .groupBy(blockedSlots.date)
+    .orderBy(asc(blockedSlots.date))
+    .limit(60);
+  const blockedDays: BlockedDayGroup[] = blockedGroupsRaw.map((g) => ({
+    date: g.date,
+    blockedCount: Number(g.cnt),
+    totalHours: hours.length,
+  }));
 
   const slots: Record<string, TSlot> = {};
   for (const d of days) {
-    for (const h of HOURS) {
+    for (const h of hours) {
       const key = `${d.dateStr}_${h}`;
       if (bookedMap.has(key)) {
         const b = bookedMap.get(key)!;
@@ -91,6 +131,8 @@ export default async function TrainerSchedulePage({
         };
       } else if (isPastSlot(d.dateStr, h, now)) {
         slots[key] = { status: "PAST" };
+      } else if (recurringHourSet.has(h)) {
+        slots[key] = { status: "RECURRING" };
       } else if (blockedSet.has(key)) {
         slots[key] = { status: "BLOCKED" };
       } else {
@@ -105,13 +147,21 @@ export default async function TrainerSchedulePage({
         title="ตารางเทรน"
         description="ดูผู้จอง ปิด/เปิดช่วงเวลา และจัดการการรับจอง"
       />
+
+      <TrainerScheduleSettings
+        openHour={openHour}
+        closeHour={closeHour}
+        blockedDays={blockedDays}
+        recurringRanges={recurringRanges}
+      />
+
       <TrainerCalendar
         days={days.map((d) => ({
           dateStr: d.dateStr,
           dayShort: d.dayShort,
           dayNum: d.dayNum,
         }))}
-        hours={HOURS}
+        hours={hours}
         slots={slots}
         bookingOpen={bookingOpen}
         prevWeek={prevWeek}

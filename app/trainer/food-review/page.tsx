@@ -103,6 +103,17 @@ export default async function TrainerFoodReviewPage() {
                           {c.comment && (
                             <p className="text-muted-foreground">{c.comment}</p>
                           )}
+                          {(c.carbs != null || c.protein != null || c.fat != null) && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {[
+                                c.carbs != null && `คาร์บ ${c.carbs}ก.`,
+                                c.protein != null && `โปรตีน ${c.protein}ก.`,
+                                c.fat != null && `ไขมัน ${c.fat}ก.`,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </p>
+                          )}
                         </div>
                       ))}
                     </div>

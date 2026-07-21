@@ -1,12 +1,16 @@
 import { addDays, startOfWeek, format } from "date-fns";
 
-export const OPEN_HOUR = 8; // 08:00
-export const CLOSE_HOUR = 20; // 20:00 (ช่องสุดท้ายเริ่ม 19:00)
-export const HOURS: number[] = Array.from(
-  { length: CLOSE_HOUR - OPEN_HOUR },
-  (_, i) => OPEN_HOUR + i,
-); // [8..19]
+export const OPEN_HOUR = 8; // ค่าเริ่มต้น (ใช้เมื่อเทรนเนอร์ยังไม่ได้ตั้งค่า)
+export const CLOSE_HOUR = 20; // ค่าเริ่มต้น
 export const CANCEL_WINDOW_HOURS = 6;
+
+/** สร้างรายการชั่วโมงที่จองได้ [openHour..closeHour-1] ตามเวลาทำการของเทรนเนอร์ */
+export function getHoursRange(openHour: number, closeHour: number): number[] {
+  return Array.from(
+    { length: Math.max(0, closeHour - openHour) },
+    (_, i) => openHour + i,
+  );
+}
 
 export const THAI_DAYS = [
   "จันทร์",
@@ -82,6 +86,33 @@ export function slotRangeLabel(h: number): string {
   return `${hourLabel(h)}-${hourLabel(h + 1)}`;
 }
 
-export function isValidSlot(dateStr: string, hour: number): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(dateStr) && HOURS.includes(hour);
+/** จับกลุ่มชั่วโมงที่ติดกันให้เป็นช่วง เช่น [12,13] -> [{from:12,to:14}] */
+export function groupConsecutiveHours(
+  hours: number[],
+): { from: number; to: number }[] {
+  const sorted = [...hours].sort((a, b) => a - b);
+  const groups: { from: number; to: number }[] = [];
+  for (const h of sorted) {
+    const last = groups[groups.length - 1];
+    if (last && last.to === h) {
+      last.to = h + 1;
+    } else {
+      groups.push({ from: h, to: h + 1 });
+    }
+  }
+  return groups;
+}
+
+export function isValidSlot(
+  dateStr: string,
+  hour: number,
+  openHour: number = OPEN_HOUR,
+  closeHour: number = CLOSE_HOUR,
+): boolean {
+  return (
+    /^\d{4}-\d{2}-\d{2}$/.test(dateStr) &&
+    Number.isInteger(hour) &&
+    hour >= openHour &&
+    hour < closeHour
+  );
 }

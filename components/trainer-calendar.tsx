@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, X, Ban } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Ban, Coffee } from "lucide-react";
 import {
   blockSlotAction,
   unblockSlotAction,
@@ -14,7 +14,7 @@ import {
 import { hourLabel, slotRangeLabel } from "@/lib/schedule";
 import { cn } from "@/lib/utils";
 
-export type TSlotStatus = "FREE" | "BOOKED" | "BLOCKED" | "PAST";
+export type TSlotStatus = "FREE" | "BOOKED" | "BLOCKED" | "RECURRING" | "PAST";
 export type TSlot = {
   status: TSlotStatus;
   bookingId?: number;
@@ -162,6 +162,10 @@ export function TrainerCalendar({
         <span className="inline-flex items-center gap-1.5">
           <span className="h-3 w-3 rounded bg-muted" /> ปิดไว้ (คลิกเพื่อเปิด)
         </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded bg-amber-100 border border-amber-300" />{" "}
+          พักประจำวัน (ตั้งค่าด้านบน)
+        </span>
       </div>
     </div>
   );
@@ -233,6 +237,15 @@ function TSlotCell({
         >
           ว่าง
         </button>
+      );
+    case "RECURRING":
+      return (
+        <div
+          className={cn(base, "bg-amber-100 text-amber-700")}
+          title="พักประจำวัน — จัดการที่แผงตั้งค่าด้านบน"
+        >
+          <Coffee className="size-3" /> พักประจำ
+        </div>
       );
     case "PAST":
     default:
