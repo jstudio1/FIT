@@ -9,6 +9,8 @@ import {
   double,
   mysqlEnum,
   unique,
+  index,
+  primaryKey,
   type AnyMySqlColumn,
 } from "drizzle-orm/mysql-core";
 import { relations } from "drizzle-orm";
@@ -23,6 +25,7 @@ export const users = mysqlTable("users", {
   trainerId: int("trainer_id").references((): AnyMySqlColumn => users.id),
   fullName: varchar("full_name", { length: 128 }).notNull(),
   active: boolean("active").notNull().default(true),
+  sessionVersion: int("session_version").notNull().default(1),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -97,6 +100,17 @@ export const blockedSlots = mysqlTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [unique("uniq_block").on(t.trainerId, t.date, t.hour)],
+);
+
+/* Serializes booking/block mutations for one trainer/date/hour. */
+export const slotLocks = mysqlTable(
+  "slot_locks",
+  {
+    trainerId: int("trainer_id").notNull().references(() => users.id),
+    date: date("date", { mode: "string" }).notNull(),
+    hour: int("hour").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.trainerId, t.date, t.hour] })],
 );
 
 /* ---------------- Recurring breaks (ช่วงเวลาที่ไม่รับเทรนทุกวัน เช่น พักเที่ยง) ---------------- */
@@ -186,6 +200,63 @@ export const notifications = mysqlTable("notifications", {
   scheduledFor: timestamp("scheduled_for"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const loginAttempts = mysqlTable(
+  "login_attempts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    identifierHash: varchar("identifier_hash", { length: 64 }).notNull(),
+    ipHash: varchar("ip_hash", { length: 64 }).notNull(),
+    success: boolean("success").notNull().default(false),
+    attemptedAt: timestamp("attempted_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_login_identifier_time").on(t.identifierHash, t.attemptedAt),
+    index("idx_login_ip_time").on(t.ipHash, t.attemptedAt),
+  ],
+);
+
+export const auditLogs = mysqlTable(
+  "audit_logs",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    actorId: int("actor_id").references(() => users.id),
+    action: varchar("action", { length: 64 }).notNull(),
+    resourceType: varchar("resource_type", { length: 64 }).notNull(),
+    resourceId: varchar("resource_id", { length: 128 }),
+    subjectUserId: int("subject_user_id").references(() => users.id),
+    ipHash: varchar("ip_hash", { length: 64 }),
+    metadata: text("metadata"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_audit_actor_time").on(t.actorId, t.createdAt),
+    index("idx_audit_subject_time").on(t.subjectUserId, t.createdAt),
+  ],
+);
+
+export const privacyConsents = mysqlTable(
+  "privacy_consents",
+  {
+    userId: int("user_id").primaryKey().references(() => users.id),
+    policyVersion: varchar("policy_version", { length: 32 }).notNull(),
+    acceptedAt: timestamp("accepted_at").notNull().defaultNow(),
+    withdrawnAt: timestamp("withdrawn_at"),
+  },
+);
+
+export const privacyRequests = mysqlTable(
+  "privacy_requests",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("user_id").notNull().references(() => users.id),
+    requestType: mysqlEnum("request_type", ["EXPORT", "DELETE"]).notNull(),
+    status: mysqlEnum("status", ["PENDING", "COMPLETED", "REJECTED"]).notNull().default("PENDING"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    completedAt: timestamp("completed_at"),
+  },
+  (t) => [index("idx_privacy_request_user_time").on(t.userId, t.createdAt)],
+);
 
 /* ---------------- Site settings (ตั้งค่าเว็บ/SEO) — แถวเดียว id=1 ---------------- */
 export const siteSettings = mysqlTable("site_settings", {

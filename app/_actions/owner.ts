@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import {
@@ -22,7 +22,7 @@ const createTrainerSchema = z.object({
     .min(3, "ชื่อผู้ใช้อย่างน้อย 3 ตัวอักษร")
     .max(64)
     .regex(/^[a-zA-Z0-9._-]+$/, "ใช้ได้เฉพาะ a-z, 0-9, . _ -"),
-  password: z.string().min(6, "รหัสผ่านอย่างน้อย 6 ตัวอักษร").max(128),
+  password: z.string().min(12, "รหัสผ่านอย่างน้อย 12 ตัวอักษร").max(128),
   fullName: z.string().trim().min(1, "กรุณากรอกชื่อ-นามสกุล").max(128),
 });
 
@@ -52,14 +52,15 @@ export async function createTrainerAction(
   }
 
   const passwordHash = await hashPassword(password);
-  const inserted = await db
-    .insert(users)
-    .values({ username, passwordHash, role: "TRAINER", fullName })
-    .$returningId();
-
-  await db
-    .insert(trainerSettings)
-    .values({ trainerId: inserted[0].id, bookingOpen: true });
+  await db.transaction(async (tx) => {
+    const inserted = await tx
+      .insert(users)
+      .values({ username, passwordHash, role: "TRAINER", fullName })
+      .$returningId();
+    await tx
+      .insert(trainerSettings)
+      .values({ trainerId: inserted[0].id, bookingOpen: true });
+  });
 
   revalidatePath("/owner/trainers");
   revalidatePath("/owner");
@@ -73,7 +74,7 @@ export async function setTrainerActiveAction(formData: FormData): Promise<void> 
   if (!Number.isFinite(id)) return;
   await db
     .update(users)
-    .set({ active })
+    .set(active ? { active } : { active, sessionVersion: sql`${users.sessionVersion} + 1` })
     .where(and(eq(users.id, id), eq(users.role, "TRAINER")));
   revalidatePath("/owner/trainers");
 }
@@ -94,13 +95,13 @@ export async function updateTrainerAction(
 
   const set: { fullName: string; passwordHash?: string } = { fullName };
   if (password) {
-    if (password.length < 6) return { error: "รหัสผ่านอย่างน้อย 6 ตัวอักษร" };
+    if (password.length < 12) return { error: "รหัสผ่านอย่างน้อย 12 ตัวอักษร" };
     set.passwordHash = await hashPassword(password);
   }
 
   await db
     .update(users)
-    .set(set)
+    .set(password ? { ...set, sessionVersion: sql`${users.sessionVersion} + 1` } : set)
     .where(and(eq(users.id, id), eq(users.role, "TRAINER")));
 
   revalidatePath(`/owner/trainers/${id}`);

@@ -22,7 +22,7 @@ export async function getSessionUser(): Promise<User | null> {
     .where(eq(users.id, session.uid))
     .limit(1);
   const user = rows[0];
-  if (!user || !user.active) return null;
+  if (!user || !user.active || user.sessionVersion !== session.sv) return null;
   return user;
 }
 
@@ -33,6 +33,7 @@ export async function createSession(user: User): Promise<void> {
     role: user.role,
     username: user.username,
     name: user.fullName,
+    sv: user.sessionVersion,
   });
   const store = await cookies();
   store.set(SESSION_COOKIE, token, {

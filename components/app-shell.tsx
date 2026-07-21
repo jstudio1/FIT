@@ -15,6 +15,7 @@ import {
   Megaphone,
   Settings,
   ClipboardList,
+  ShieldCheck,
   LogOut,
   Menu,
   X,
@@ -49,6 +50,7 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/client/schedule", label: "จองเวลาเทรน", icon: CalendarDays },
     { href: "/client/results", label: "ผลลัพธ์", icon: LineChart },
     { href: "/client/food", label: "ส่งอาหาร", icon: Camera },
+    { href: "/client/privacy", label: "ความเป็นส่วนตัว", icon: ShieldCheck },
   ],
 };
 

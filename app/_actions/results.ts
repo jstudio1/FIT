@@ -5,6 +5,8 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { sessionResults, bookings } from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
+import { writeAudit } from "@/lib/audit";
+import { hasCurrentPrivacyConsent } from "@/lib/privacy";
 
 export type Res = { error?: string; success?: string };
 
@@ -22,6 +24,7 @@ export type ResultInput = {
 
 export async function addResultAction(input: ResultInput): Promise<Res> {
   const client = await requireRole("CLIENT");
+  if (!(await hasCurrentPrivacyConsent(client.id))) return { error: "กรุณายอมรับนโยบายความเป็นส่วนตัวก่อนบันทึกข้อมูลสุขภาพ" };
 
   const metrics = [input.weight, input.waist, input.muscleMass, input.bodyFat];
   if (metrics.every((m) => m == null || Number.isNaN(m))) {
@@ -47,6 +50,7 @@ export async function addResultAction(input: ResultInput): Promise<Res> {
     note: input.note ?? null,
     measuredAt,
   });
+  await writeAudit({ actorId: client.id, action: "HEALTH_RESULT_CREATED", resourceType: "SESSION_RESULT", subjectUserId: client.id });
 
   revalidatePath("/client/results");
   revalidatePath("/client");
@@ -60,6 +64,7 @@ export async function deleteResultAction(id: number): Promise<Res> {
     .where(
       and(eq(sessionResults.id, id), eq(sessionResults.clientId, client.id)),
     );
+  await writeAudit({ actorId: client.id, action: "HEALTH_RESULT_DELETED", resourceType: "SESSION_RESULT", resourceId: id, subjectUserId: client.id });
   revalidatePath("/client/results");
   revalidatePath("/client");
   return { success: "ลบผลลัพธ์แล้ว" };

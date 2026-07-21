@@ -11,6 +11,7 @@ import {
   trainerSettings,
   notifications,
   bookingCancellations,
+  slotLocks,
 } from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
 import {
@@ -93,24 +94,26 @@ export async function bookSlotAction(
   if (blk) return { error: "ช่วงเวลานี้เทรนเนอร์ไม่ว่าง" };
 
   try {
-    await db.insert(bookings).values({
-      clientId: client.id,
-      trainerId,
-      date: dateStr,
-      hour,
-      status: "BOOKED",
+    await db.transaction(async (tx) => {
+      await tx.insert(slotLocks).values({ trainerId, date: dateStr, hour })
+        .onDuplicateKeyUpdate({ set: { hour } });
+      await tx.select().from(slotLocks)
+        .where(and(eq(slotLocks.trainerId, trainerId), eq(slotLocks.date, dateStr), eq(slotLocks.hour, hour)))
+        .for("update");
+      const [blocked] = await tx.select({ id: blockedSlots.id }).from(blockedSlots)
+        .where(and(eq(blockedSlots.trainerId, trainerId), eq(blockedSlots.date, dateStr), eq(blockedSlots.hour, hour))).limit(1);
+      if (blocked) throw new Error("SLOT_UNAVAILABLE");
+      await tx.insert(bookings).values({ clientId: client.id, trainerId, date: dateStr, hour, status: "BOOKED" });
+      await tx.insert(notifications).values({
+        userId: trainerId, type: "booking", title: "มีการจองใหม่",
+        message: `${client.fullName} จองวันที่ ${dateStr} เวลา ${hourLabel(hour)}`,
+      });
     });
   } catch (e) {
+    if (e instanceof Error && e.message === "SLOT_UNAVAILABLE") return { error: "ช่วงเวลานี้เทรนเนอร์ไม่ว่าง" };
     if (isDupError(e)) return { error: "ช่องเวลานี้เพิ่งถูกจองไปแล้ว" };
     throw e;
   }
-
-  await db.insert(notifications).values({
-    userId: trainerId,
-    type: "booking",
-    title: "มีการจองใหม่",
-    message: `${client.fullName} จองวันที่ ${dateStr} เวลา ${hourLabel(hour)}`,
-  });
 
   revalidatePath("/client/schedule");
   return { success: "จองสำเร็จ" };
@@ -127,19 +130,13 @@ export async function cancelBookingAction(bookingId: number): Promise<Res> {
   if (!canCancelSlot(b.date, b.hour))
     return { error: "ยกเลิกได้เฉพาะก่อนเวลาเทรนอย่างน้อย 6 ชั่วโมง" };
 
-  await db.insert(bookingCancellations).values({
-    trainerId: b.trainerId,
-    clientId: b.clientId,
-    date: b.date,
-    hour: b.hour,
-    cancelledBy: "CLIENT",
-  });
-  await db.delete(bookings).where(eq(bookings.id, bookingId));
-  await db.insert(notifications).values({
-    userId: b.trainerId,
-    type: "cancel",
-    title: "ลูกเทรนยกเลิกนัด",
-    message: `${client.fullName} ยกเลิกวันที่ ${b.date} เวลา ${hourLabel(b.hour)}`,
+  await db.transaction(async (tx) => {
+    await tx.insert(bookingCancellations).values({ trainerId: b.trainerId, clientId: b.clientId, date: b.date, hour: b.hour, cancelledBy: "CLIENT" });
+    await tx.delete(bookings).where(and(eq(bookings.id, bookingId), eq(bookings.clientId, client.id)));
+    await tx.insert(notifications).values({
+      userId: b.trainerId, type: "cancel", title: "ลูกเทรนยกเลิกนัด",
+      message: `${client.fullName} ยกเลิกวันที่ ${b.date} เวลา ${hourLabel(b.hour)}`,
+    });
   });
 
   revalidatePath("/client/schedule");
@@ -199,10 +196,19 @@ export async function blockSlotAction(
   if (b) return { error: "ช่องนี้มีลูกเทรนจองอยู่ ยกเลิกการจองก่อน" };
 
   try {
-    await db
-      .insert(blockedSlots)
-      .values({ trainerId: trainer.id, date: dateStr, hour });
+    await db.transaction(async (tx) => {
+      await tx.insert(slotLocks).values({ trainerId: trainer.id, date: dateStr, hour })
+        .onDuplicateKeyUpdate({ set: { hour } });
+      await tx.select().from(slotLocks)
+        .where(and(eq(slotLocks.trainerId, trainer.id), eq(slotLocks.date, dateStr), eq(slotLocks.hour, hour)))
+        .for("update");
+      const [booking] = await tx.select({ id: bookings.id }).from(bookings)
+        .where(and(eq(bookings.trainerId, trainer.id), eq(bookings.date, dateStr), eq(bookings.hour, hour))).limit(1);
+      if (booking) throw new Error("SLOT_BOOKED");
+      await tx.insert(blockedSlots).values({ trainerId: trainer.id, date: dateStr, hour });
+    });
   } catch (e) {
+    if (e instanceof Error && e.message === "SLOT_BOOKED") return { error: "ช่องนี้มีลูกเทรนจองอยู่" };
     if (!isDupError(e)) throw e;
   }
   revalidatePath("/trainer/schedule");
@@ -238,19 +244,13 @@ export async function trainerCancelBookingAction(
     .limit(1);
   if (!b) return { error: "ไม่พบการจอง" };
 
-  await db.insert(bookingCancellations).values({
-    trainerId: b.trainerId,
-    clientId: b.clientId,
-    date: b.date,
-    hour: b.hour,
-    cancelledBy: "TRAINER",
-  });
-  await db.delete(bookings).where(eq(bookings.id, bookingId));
-  await db.insert(notifications).values({
-    userId: b.clientId,
-    type: "cancel",
-    title: "เทรนเนอร์ยกเลิกนัด",
-    message: `เทรนเนอร์ยกเลิกนัดของคุณ วันที่ ${b.date} เวลา ${hourLabel(b.hour)} (เหตุฉุกเฉิน)`,
+  await db.transaction(async (tx) => {
+    await tx.insert(bookingCancellations).values({ trainerId: b.trainerId, clientId: b.clientId, date: b.date, hour: b.hour, cancelledBy: "TRAINER" });
+    await tx.delete(bookings).where(and(eq(bookings.id, bookingId), eq(bookings.trainerId, trainer.id)));
+    await tx.insert(notifications).values({
+      userId: b.clientId, type: "cancel", title: "เทรนเนอร์ยกเลิกนัด",
+      message: `เทรนเนอร์ยกเลิกนัดของคุณ วันที่ ${b.date} เวลา ${hourLabel(b.hour)} (เหตุฉุกเฉิน)`,
+    });
   });
 
   revalidatePath("/trainer/schedule");
@@ -371,11 +371,23 @@ export async function blockDateRangeAction(
         continue;
       }
       try {
-        await db
-          .insert(blockedSlots)
-          .values({ trainerId: trainer.id, date: dateStr, hour: h });
+        await db.transaction(async (tx) => {
+          await tx.insert(slotLocks).values({ trainerId: trainer.id, date: dateStr, hour: h })
+            .onDuplicateKeyUpdate({ set: { hour: h } });
+          await tx.select().from(slotLocks)
+            .where(and(eq(slotLocks.trainerId, trainer.id), eq(slotLocks.date, dateStr), eq(slotLocks.hour, h)))
+            .for("update");
+          const [booking] = await tx.select({ id: bookings.id }).from(bookings)
+            .where(and(eq(bookings.trainerId, trainer.id), eq(bookings.date, dateStr), eq(bookings.hour, h))).limit(1);
+          if (booking) throw new Error("SLOT_BOOKED");
+          await tx.insert(blockedSlots).values({ trainerId: trainer.id, date: dateStr, hour: h });
+        });
         blocked++;
       } catch (e) {
+        if (e instanceof Error && e.message === "SLOT_BOOKED") {
+          skipped++;
+          continue;
+        }
         if (!isDupError(e)) throw e;
       }
     }

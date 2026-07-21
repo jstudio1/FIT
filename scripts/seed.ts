@@ -6,8 +6,12 @@ import { hashPassword } from "../lib/password";
 
 async function main() {
   const username = process.env.OWNER_USERNAME ?? "owner";
-  const password = process.env.OWNER_PASSWORD ?? "owner1234";
+  const password = process.env.OWNER_PASSWORD;
   const name = process.env.OWNER_NAME ?? "เจ้าของระบบ";
+
+  if (!password || password.length < 12) {
+    throw new Error("OWNER_PASSWORD is required and must be at least 12 characters");
+  }
 
   const existing = await db
     .select()
@@ -30,7 +34,6 @@ async function main() {
 
   console.log(`✅ สร้างบัญชี OWNER สำเร็จ`);
   console.log(`   username: ${username}`);
-  console.log(`   password: ${password}`);
   process.exit(0);
 }
 

@@ -7,6 +7,8 @@ import { db } from "@/lib/db";
 import { users, clientProfiles } from "@/lib/db/schema";
 import { hashPassword } from "@/lib/password";
 import { requireRole } from "@/lib/authz";
+import { writeAudit } from "@/lib/audit";
+import { hasCurrentPrivacyConsent } from "@/lib/privacy";
 
 export type ActionState = { error?: string; success?: string } | null;
 
@@ -17,7 +19,7 @@ const createClientSchema = z.object({
     .min(3, "ชื่อผู้ใช้อย่างน้อย 3 ตัวอักษร")
     .max(64)
     .regex(/^[a-zA-Z0-9._-]+$/, "ใช้ได้เฉพาะ a-z, 0-9, . _ -"),
-  password: z.string().min(6, "รหัสผ่านอย่างน้อย 6 ตัวอักษร").max(128),
+  password: z.string().min(12, "รหัสผ่านอย่างน้อย 12 ตัวอักษร").max(128),
   fullName: z.string().trim().min(1, "กรุณากรอกชื่อ-นามสกุล").max(128),
 });
 
@@ -43,19 +45,13 @@ export async function createClientAction(
   if (dup[0]) return { error: "ชื่อผู้ใช้นี้ถูกใช้แล้ว" };
 
   const passwordHash = await hashPassword(password);
-  const inserted = await db
-    .insert(users)
-    .values({
-      username,
-      passwordHash,
-      role: "CLIENT",
-      fullName,
-      trainerId: trainer.id,
-    })
-    .$returningId();
-
-  // สร้างแถวประวัติเปล่าไว้ให้พร้อมแก้
-  await db.insert(clientProfiles).values({ userId: inserted[0].id });
+  await db.transaction(async (tx) => {
+    const inserted = await tx
+      .insert(users)
+      .values({ username, passwordHash, role: "CLIENT", fullName, trainerId: trainer.id })
+      .$returningId();
+    await tx.insert(clientProfiles).values({ userId: inserted[0].id });
+  });
 
   revalidatePath("/trainer/clients");
   revalidatePath("/trainer");
@@ -95,6 +91,7 @@ export async function saveProfileAction(
     )
     .limit(1);
   if (!rows[0]) return { error: "ไม่มีสิทธิ์แก้ไขลูกเทรนรายนี้" };
+  if (!(await hasCurrentPrivacyConsent(clientId))) return { error: "ลูกเทรนยังไม่ได้ยอมรับนโยบายความเป็นส่วนตัว" };
 
   const data = {
     goals: str(formData.get("goals")),
@@ -129,5 +126,6 @@ export async function saveProfileAction(
   }
 
   revalidatePath(`/trainer/clients/${clientId}`);
+  await writeAudit({ actorId: trainer.id, action: "HEALTH_PROFILE_UPDATED", resourceType: "CLIENT_PROFILE", resourceId: clientId, subjectUserId: clientId });
   return { success: "บันทึกประวัติเรียบร้อย" };
 }

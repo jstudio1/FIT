@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { foodLogs, foodComments, users, notifications } from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
+import { writeAudit } from "@/lib/audit";
 
 export type Res = { error?: string; success?: string };
 
@@ -45,24 +46,22 @@ export async function commentFoodAction(
     .limit(1);
   if (!row) return { error: "ไม่มีสิทธิ์ตรวจรายการนี้" };
 
-  await db.insert(foodComments).values({
-    foodLogId,
-    trainerId: trainer.id,
-    comment: cleanComment,
-    calories,
-    carbs,
-    protein,
-    fat,
+  await db.transaction(async (tx) => {
+    await tx.insert(foodComments).values({
+      foodLogId, trainerId: trainer.id, comment: cleanComment,
+      calories, carbs, protein, fat,
+    });
+    await tx.insert(notifications).values({
+      userId: row.clientId,
+      type: "food",
+      title: "เทรนเนอร์ตรวจอาหารแล้ว",
+      message: calories
+        ? `เทรนเนอร์คอมเมนต์อาหารของคุณ (~${calories} แคล)`
+        : "เทรนเนอร์คอมเมนต์อาหารของคุณ",
+    });
   });
 
-  await db.insert(notifications).values({
-    userId: row.clientId,
-    type: "food",
-    title: "เทรนเนอร์ตรวจอาหารแล้ว",
-    message: calories
-      ? `เทรนเนอร์คอมเมนต์อาหารของคุณ (~${calories} แคล)`
-      : "เทรนเนอร์คอมเมนต์อาหารของคุณ",
-  });
+  await writeAudit({ actorId: trainer.id, action: "FOOD_LOG_REVIEWED", resourceType: "FOOD_LOG", resourceId: foodLogId, subjectUserId: row.clientId });
 
   revalidatePath("/trainer/food-review");
   revalidatePath("/trainer/clients");
