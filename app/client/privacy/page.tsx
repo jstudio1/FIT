@@ -2,7 +2,8 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { privacyConsents, privacyRequests } from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
-import { acceptPrivacyAction, PRIVACY_POLICY_VERSION, requestAccountDeletionAction } from "@/app/_actions/privacy";
+import { acceptPrivacyAction, requestAccountDeletionAction } from "@/app/_actions/privacy";
+import { CURRENT_PRIVACY_POLICY_VERSION } from "@/lib/privacy";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -15,8 +16,8 @@ export default async function PrivacyPage() {
     <Card><CardHeader><CardTitle>นโยบายข้อมูล</CardTitle></CardHeader><CardContent className="space-y-4">
       <p>ระบบเก็บข้อมูลโปรไฟล์สุขภาพ ผลการวัด ตารางนัด และรูปอาหารเพื่อให้บริการฝึกสอน ข้อมูลเข้าถึงได้เฉพาะเจ้าของระบบ เทรนเนอร์ที่รับผิดชอบ และตัวคุณตามหน้าที่</p>
       <p>เก็บข้อมูลระหว่างที่บัญชียังใช้งาน และดำเนินการคำขอลบภายใน 30 วัน เว้นแต่ข้อมูลที่กฎหมายกำหนดให้เก็บรักษา</p>
-      <p className="text-sm text-muted-foreground">เวอร์ชัน {PRIVACY_POLICY_VERSION}</p>
-      {consent?.policyVersion === PRIVACY_POLICY_VERSION && !consent.withdrawnAt
+      <p className="text-sm text-muted-foreground">เวอร์ชัน {CURRENT_PRIVACY_POLICY_VERSION}</p>
+      {consent?.policyVersion === CURRENT_PRIVACY_POLICY_VERSION && !consent.withdrawnAt
         ? <p className="text-green-700">ยอมรับนโยบายแล้ว</p>
         : <form action={acceptPrivacyAction}><Button type="submit">ยอมรับนโยบาย</Button></form>}
     </CardContent></Card>

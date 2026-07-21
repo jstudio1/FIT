@@ -213,13 +213,13 @@ export async function fetchReportRecords(
 
   return [
     ...completedRows.map(
-      (r): ReportRecord => ({ id: `c-${r.id}`, status: "COMPLETED", ...r }),
+      (r): ReportRecord => ({ ...r, id: `c-${r.id}`, status: "COMPLETED" }),
     ),
     ...noShowRows.map(
-      (r): ReportRecord => ({ id: `n-${r.id}`, status: "NO_SHOW", ...r }),
+      (r): ReportRecord => ({ ...r, id: `n-${r.id}`, status: "NO_SHOW" }),
     ),
     ...cancelledRows.map(
-      (r): ReportRecord => ({ id: `x-${r.id}`, status: "CANCELLED", ...r }),
+      (r): ReportRecord => ({ ...r, id: `x-${r.id}`, status: "CANCELLED" }),
     ),
   ];
 }

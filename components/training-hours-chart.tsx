@@ -38,7 +38,7 @@ export function TrainingHoursChart({ data }: { data: HoursPoint[] }) {
               border: "1px solid #e2e8f0",
               fontSize: 13,
             }}
-            formatter={(v: number) => [`${v} ชม.`, "ชั่วโมงเทรน"]}
+            formatter={(value) => [`${Number(value ?? 0)} ชม.`, "ชั่วโมงเทรน"]}
           />
           <Bar dataKey="hours" name="ชั่วโมงเทรน" fill="#0d9488" radius={[4, 4, 0, 0]} />
         </BarChart>

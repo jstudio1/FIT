@@ -8,13 +8,11 @@ import { requireUser } from "@/lib/authz";
 import { writeAudit } from "@/lib/audit";
 import { CURRENT_PRIVACY_POLICY_VERSION } from "@/lib/privacy";
 
-export const PRIVACY_POLICY_VERSION = CURRENT_PRIVACY_POLICY_VERSION;
-
 export async function acceptPrivacyAction(): Promise<void> {
   const user = await requireUser();
-  await db.insert(privacyConsents).values({ userId: user.id, policyVersion: PRIVACY_POLICY_VERSION })
-    .onDuplicateKeyUpdate({ set: { policyVersion: PRIVACY_POLICY_VERSION, acceptedAt: new Date(), withdrawnAt: null } });
-  await writeAudit({ actorId: user.id, action: "PRIVACY_CONSENT_ACCEPTED", resourceType: "PRIVACY_CONSENT", subjectUserId: user.id, metadata: { policyVersion: PRIVACY_POLICY_VERSION } });
+  await db.insert(privacyConsents).values({ userId: user.id, policyVersion: CURRENT_PRIVACY_POLICY_VERSION })
+    .onDuplicateKeyUpdate({ set: { policyVersion: CURRENT_PRIVACY_POLICY_VERSION, acceptedAt: new Date(), withdrawnAt: null } });
+  await writeAudit({ actorId: user.id, action: "PRIVACY_CONSENT_ACCEPTED", resourceType: "PRIVACY_CONSENT", subjectUserId: user.id, metadata: { policyVersion: CURRENT_PRIVACY_POLICY_VERSION } });
   revalidatePath("/client/privacy");
 }
 
