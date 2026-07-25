@@ -38,6 +38,38 @@ export function latestNutritionPerLog(
   return map;
 }
 
+export type AutoNutritionLog = {
+  id: number;
+  createdAt: Date;
+  autoStatus: "NONE" | "PROCESSING" | "DONE" | "FAILED";
+  autoCalories: number | null;
+  autoCarbs: number | null;
+  autoProtein: number | null;
+  autoFat: number | null;
+};
+
+/**
+ * ค่าโภชนาการ "ตัวจริง" ของรูปอาหาร 1 รูป — ใช้คอมเมนต์เทรนเนอร์ถ้ามี
+ * ไม่งั้น fallback ไปผลคำนวณอัตโนมัติ (ถ้า AI คำนวณเสร็จแล้ว)
+ */
+export function nutritionForLog(
+  log: AutoNutritionLog,
+  comment: NutritionEntry | undefined,
+): NutritionEntry | undefined {
+  if (comment) return comment;
+  if (log.autoStatus === "DONE") {
+    return {
+      foodLogId: log.id,
+      calories: log.autoCalories,
+      carbs: log.autoCarbs,
+      protein: log.autoProtein,
+      fat: log.autoFat,
+      createdAt: log.createdAt,
+    };
+  }
+  return undefined;
+}
+
 export function sumTotals(entries: NutritionEntry[]): DailyTotals {
   return entries.reduce(
     (acc, e) => ({

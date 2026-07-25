@@ -8,6 +8,8 @@ import {
   LineChart as LineChartIcon,
   NotebookText,
   UtensilsCrossed,
+  Mail,
+  Phone,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import {
@@ -28,6 +30,7 @@ import {
 } from "@/lib/schedule";
 import {
   latestNutritionPerLog,
+  nutritionForLog,
   sumTotals,
   type NutritionEntry,
 } from "@/lib/nutrition";
@@ -189,7 +192,7 @@ export default async function ClientProfilePage({
   }));
   const diaryLatestMap = latestNutritionPerLog(diaryNutritionEntries);
   const diarySelectedNutrition = selectedDiaryLogs
-    .map((l) => diaryLatestMap.get(l.id))
+    .map((l) => nutritionForLog(l, diaryLatestMap.get(l.id)))
     .filter((x): x is NutritionEntry => !!x);
   const diaryTotals = sumTotals(diarySelectedNutrition);
 
@@ -203,16 +206,58 @@ export default async function ClientProfilePage({
         กลับไปหน้ารายชื่อ
       </Link>
 
-      <div className="flex items-center gap-4 mb-6">
-        <div className="h-14 w-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-semibold">
-          {client.fullName.charAt(0)}
+      <div className="mb-6">
+        <div className="flex items-center gap-4">
+          <div className="h-14 w-14 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-semibold overflow-hidden">
+            {client.avatarPath ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={`/api/avatar/${client.id}`}
+                alt={client.fullName}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              client.fullName.charAt(0)
+            )}
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {client.fullName}
+              {client.nickname && (
+                <span className="text-lg font-normal text-muted-foreground">
+                  {" "}
+                  ({client.nickname})
+                </span>
+              )}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              @{client.username} · ลูกเทรนของคุณ
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{client.fullName}</h1>
-          <p className="text-sm text-muted-foreground">
-            @{client.username} · ลูกเทรนของคุณ
-          </p>
-        </div>
+
+        {(client.email || client.phone) && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-sm text-muted-foreground">
+            {client.email && (
+              <a
+                href={`mailto:${client.email}`}
+                className="inline-flex items-center gap-1.5 hover:text-foreground"
+              >
+                <Mail className="size-3.5" />
+                {client.email}
+              </a>
+            )}
+            {client.phone && (
+              <a
+                href={`tel:${client.phone}`}
+                className="inline-flex items-center gap-1.5 hover:text-foreground"
+              >
+                <Phone className="size-3.5" />
+                {client.phone}
+              </a>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="space-y-5">
@@ -271,13 +316,26 @@ export default async function ClientProfilePage({
                       fat: c.fat,
                       authorLabel: "คุณ",
                     }));
+                    if (cardComments.length === 0 && log.reviewedBy === "AUTO") {
+                      cardComments.push({
+                        id: -log.id,
+                        comment: log.autoLabel ? `ตรวจพบ: ${log.autoLabel}` : null,
+                        calories: log.autoCalories,
+                        carbs: log.autoCarbs,
+                        protein: log.autoProtein,
+                        fat: log.autoFat,
+                        authorLabel: "⚡ AI (ประมาณการ)",
+                      });
+                    }
                     return (
                       <FoodLogCard
                         key={log.id}
                         log={log}
                         comments={cardComments}
                         imageSize="h-36"
-                        footer={<FoodCommentForm foodLogId={log.id} />}
+                        footer={
+                          !log.reviewedAt && <FoodCommentForm foodLogId={log.id} />
+                        }
                       />
                     );
                   })}

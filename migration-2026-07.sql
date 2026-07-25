@@ -101,3 +101,25 @@ CREATE INDEX idx_bookings_client_date_hour ON bookings(client_id, date, hour);
 CREATE INDEX idx_results_client_measured ON session_results(client_id, measured_at);
 CREATE INDEX idx_food_client_created ON food_logs(client_id, created_at);
 CREATE INDEX idx_notifications_user_read_created ON notifications(user_id, is_read, created_at);
+
+-- 7) หน้าโปรไฟล์ (ลูกเทรน+เทรนเนอร์): ชื่อเล่น, bio, อีเมล, เบอร์โทร, รูปโปรไฟล์
+ALTER TABLE users
+  ADD COLUMN nickname VARCHAR(64) NULL,
+  ADD COLUMN bio TEXT NULL,
+  ADD COLUMN email VARCHAR(191) NULL,
+  ADD COLUMN phone VARCHAR(32) NULL,
+  ADD COLUMN avatar_path VARCHAR(255) NULL;
+
+-- 8) ตรวจอาหารอัตโนมัติด้วย AI (Google Vision + USDA FDC) — toggle ต่อเทรนเนอร์ + ผลคำนวณต่อรูป
+ALTER TABLE trainer_settings
+  ADD COLUMN auto_nutrition_enabled BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE food_logs
+  ADD COLUMN auto_status ENUM('NONE','PROCESSING','DONE','FAILED') NOT NULL DEFAULT 'NONE',
+  ADD COLUMN auto_calories INT NULL,
+  ADD COLUMN auto_carbs INT NULL,
+  ADD COLUMN auto_protein INT NULL,
+  ADD COLUMN auto_fat INT NULL,
+  ADD COLUMN auto_label VARCHAR(255) NULL,
+  ADD COLUMN reviewed_at TIMESTAMP NULL,
+  ADD COLUMN reviewed_by ENUM('AUTO','TRAINER') NULL;

@@ -26,6 +26,12 @@ export const users = mysqlTable("users", {
   fullName: varchar("full_name", { length: 128 }).notNull(),
   active: boolean("active").notNull().default(true),
   sessionVersion: int("session_version").notNull().default(1),
+  // โปรไฟล์ส่วนตัว (เติมได้เอง)
+  nickname: varchar("nickname", { length: 64 }),
+  bio: text("bio"),
+  email: varchar("email", { length: 191 }),
+  phone: varchar("phone", { length: 32 }),
+  avatarPath: varchar("avatar_path", { length: 255 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -63,6 +69,8 @@ export const trainerSettings = mysqlTable("trainer_settings", {
   bookingOpen: boolean("booking_open").notNull().default(true),
   openHour: int("open_hour").notNull().default(8),
   closeHour: int("close_hour").notNull().default(20),
+  // ตรวจอาหารอัตโนมัติด้วย AI (Google Vision + USDA FDC) แทนการกรอกเอง
+  autoNutritionEnabled: boolean("auto_nutrition_enabled").notNull().default(false),
 });
 
 /* ---------------- Bookings (ตารางจอง) ---------------- */
@@ -168,6 +176,18 @@ export const foodLogs = mysqlTable("food_logs", {
   mealType: mysqlEnum("meal_type", ["BREAKFAST", "LUNCH", "DINNER", "SNACK"]).notNull(),
   note: text("note"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  // ผลคำนวณอัตโนมัติจาก AI (Google Vision + USDA FDC) — แยกจาก food_comments โดยเจตนา
+  autoStatus: mysqlEnum("auto_status", ["NONE", "PROCESSING", "DONE", "FAILED"])
+    .notNull()
+    .default("NONE"),
+  autoCalories: int("auto_calories"),
+  autoCarbs: int("auto_carbs"), // กรัม
+  autoProtein: int("auto_protein"), // กรัม
+  autoFat: int("auto_fat"), // กรัม
+  autoLabel: varchar("auto_label", { length: 255 }), // ชื่ออาหารที่ AI ตรวจพบ เช่น "ข้าวผัด, ไข่ดาว"
+  // สถานะรวม: ตรวจแล้วหรือยัง (ไม่ว่าจะโดย AI หรือเทรนเนอร์)
+  reviewedAt: timestamp("reviewed_at"),
+  reviewedBy: mysqlEnum("reviewed_by", ["AUTO", "TRAINER"]),
 });
 
 /* ---------------- Food comments (เทรนเนอร์ตรวจ/คอมเมนต์) ---------------- */

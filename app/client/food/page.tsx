@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/authz";
 import { getWeekDays, weekStart, toDateStr } from "@/lib/schedule";
 import {
   latestNutritionPerLog,
+  nutritionForLog,
   sumTotals,
   type NutritionEntry,
 } from "@/lib/nutrition";
@@ -94,7 +95,7 @@ export default async function ClientFoodPage({
   }));
   const latestMap = latestNutritionPerLog(nutritionEntries);
   const selectedNutrition = selectedLogs
-    .map((l) => latestMap.get(l.id))
+    .map((l) => nutritionForLog(l, latestMap.get(l.id)))
     .filter((x): x is NutritionEntry => !!x);
   const totals = sumTotals(selectedNutrition);
 
@@ -132,6 +133,17 @@ export default async function ClientFoodPage({
                   fat: c.fat,
                   authorLabel: "เทรนเนอร์",
                 }));
+                if (cardComments.length === 0 && log.reviewedBy === "AUTO") {
+                  cardComments.push({
+                    id: -log.id,
+                    comment: log.autoLabel ? `ตรวจพบ: ${log.autoLabel}` : null,
+                    calories: log.autoCalories,
+                    carbs: log.autoCarbs,
+                    protein: log.autoProtein,
+                    fat: log.autoFat,
+                    authorLabel: "⚡ AI (ประมาณการ)",
+                  });
+                }
                 return (
                   <FoodLogCard key={log.id} log={log} comments={cardComments} />
                 );
