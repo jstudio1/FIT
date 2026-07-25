@@ -16,6 +16,7 @@ import {
   Settings,
   ClipboardList,
   ShieldCheck,
+  UserCircle,
   LogOut,
   Menu,
   X,
@@ -44,12 +45,14 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/trainer/schedule", label: "ตารางเทรน", icon: CalendarDays },
     { href: "/trainer/reports", label: "รายงาน", icon: ClipboardList },
     { href: "/trainer/food-review", label: "ตรวจอาหาร", icon: UtensilsCrossed },
+    { href: "/trainer/profile", label: "โปรไฟล์", icon: UserCircle },
   ],
   CLIENT: [
     { href: "/client", label: "แดชบอร์ด", icon: LayoutDashboard },
     { href: "/client/schedule", label: "จองเวลาเทรน", icon: CalendarDays },
     { href: "/client/results", label: "ผลลัพธ์", icon: LineChart },
     { href: "/client/food", label: "ส่งอาหาร", icon: Camera },
+    { href: "/client/profile", label: "โปรไฟล์", icon: UserCircle },
     { href: "/client/privacy", label: "ความเป็นส่วนตัว", icon: ShieldCheck },
   ],
 };
@@ -63,10 +66,14 @@ const ROLE_LABEL: Record<Role, string> = {
 export function AppShell({
   role,
   name,
+  userId,
+  avatarPath,
   children,
 }: {
   role: Role;
   name: string;
+  userId: number;
+  avatarPath?: string | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -81,7 +88,7 @@ export function AppShell({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border flex flex-col transition-transform lg:translate-x-0 lg:static",
+          "fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border flex flex-col transition-transform lg:translate-x-0 lg:sticky lg:top-0 lg:bottom-auto lg:h-screen lg:self-start",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -121,10 +128,24 @@ export function AppShell({
         </nav>
 
         <div className="p-3 border-t border-border">
-          <div className="px-3 py-2 mb-1">
-            <div className="text-sm font-medium truncate">{name}</div>
-            <div className="text-xs text-muted-foreground">
-              {ROLE_LABEL[role]}
+          <div className="flex items-center gap-2.5 px-3 py-2 mb-1">
+            <div className="h-8 w-8 shrink-0 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-xs font-semibold overflow-hidden">
+              {avatarPath ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/api/avatar/${userId}`}
+                  alt={name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                name.charAt(0)
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-medium truncate">{name}</div>
+              <div className="text-xs text-muted-foreground">
+                {ROLE_LABEL[role]}
+              </div>
             </div>
           </div>
           <form action={logoutAction}>

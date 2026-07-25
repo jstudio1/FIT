@@ -6,8 +6,10 @@ import { db } from "@/lib/db";
 import { clientProfiles, sessionResults, bookings } from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
 import { toDateStr, hourLabel } from "@/lib/schedule";
+import { computeClientSteps } from "@/lib/profile-progress";
 import { PageHeader } from "@/components/page-header";
 import { ResultsChart, type ResultPoint } from "@/components/results-chart";
+import { ProfileProgress } from "@/components/profile-progress";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +45,8 @@ export default async function ClientDashboardPage() {
     bodyFat: r.bodyFat,
   }));
   const latest = results[results.length - 1];
+  const hasHealthProfile = Boolean(profile?.goals || profile?.healthHistory);
+  const profileSteps = computeClientSteps(client, hasHealthProfile);
 
   const baseline = [
     { label: "น้ำหนักล่าสุด", value: latest?.weight ?? profile?.startWeight, unit: "กก." },
@@ -57,6 +61,12 @@ export default async function ClientDashboardPage() {
         title={`สวัสดี, ${client.fullName}`}
         description="ภาพรวมการเทรนของคุณ"
       />
+
+      {profileSteps.some((s) => !s.done) && (
+        <div className="mb-4">
+          <ProfileProgress steps={profileSteps} href="/client/profile" compact />
+        </div>
+      )}
 
       {/* เป้าหมาย + นัดถัดไป */}
       <div className="grid gap-4 lg:grid-cols-2 mb-4">

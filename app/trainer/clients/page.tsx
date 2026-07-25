@@ -1,58 +1,176 @@
-import Link from "next/link";
-import { and, desc, eq } from "drizzle-orm";
-import { Users, ChevronRight } from "lucide-react";
+import { format, differenceInCalendarDays } from "date-fns";
+import { and, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { Users, UserCheck, UtensilsCrossed } from "lucide-react";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import {
+  users,
+  bookings,
+  foodLogs,
+  foodComments,
+  clientProfiles,
+} from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
+import { toDateStr, hourLabel } from "@/lib/schedule";
+import { computeClientSteps } from "@/lib/profile-progress";
 import { PageHeader } from "@/components/page-header";
+import { StatCard } from "@/components/stat-card";
 import { CreateClientForm } from "@/components/create-client-form";
+import { ClientList, type ClientListItem } from "@/components/client-list";
 
 export const dynamic = "force-dynamic";
 
 export default async function TrainerClientsPage() {
   const trainer = await requireRole("TRAINER");
+  const today = toDateStr(new Date());
 
   const clients = await db
     .select()
     .from(users)
     .where(and(eq(users.role, "CLIENT"), eq(users.trainerId, trainer.id)))
-    .orderBy(desc(users.createdAt));
+    .orderBy(users.createdAt);
+
+  // นัดที่ "มาเทรน" ล่าสุดต่อคน
+  const lastTrainedRows = await db
+    .select({
+      clientId: bookings.clientId,
+      lastDate: sql<string>`MAX(${bookings.date})`,
+    })
+    .from(bookings)
+    .where(
+      and(eq(bookings.trainerId, trainer.id), eq(bookings.status, "COMPLETED")),
+    )
+    .groupBy(bookings.clientId);
+  const lastTrainedMap = new Map(lastTrainedRows.map((r) => [r.clientId, r.lastDate]));
+
+  // นัดถัดไปที่ยังไม่ถึง (เอาที่เร็วที่สุดต่อคน)
+  const upcomingRows = await db
+    .select({
+      clientId: bookings.clientId,
+      date: bookings.date,
+      hour: bookings.hour,
+    })
+    .from(bookings)
+    .where(
+      and(
+        eq(bookings.trainerId, trainer.id),
+        eq(bookings.status, "BOOKED"),
+        gte(bookings.date, today),
+      ),
+    )
+    .orderBy(bookings.date, bookings.hour);
+  const nextSessionMap = new Map<number, { date: string; hour: number }>();
+  for (const r of upcomingRows) {
+    if (!nextSessionMap.has(r.clientId)) {
+      nextSessionMap.set(r.clientId, { date: r.date, hour: r.hour });
+    }
+  }
+
+  // อาหารที่ยังไม่ได้ตรวจ ต่อคน
+  const pendingFoodRows = await db
+    .select({ clientId: foodLogs.clientId, c: sql<number>`count(*)` })
+    .from(foodLogs)
+    .innerJoin(users, eq(users.id, foodLogs.clientId))
+    .leftJoin(foodComments, eq(foodComments.foodLogId, foodLogs.id))
+    .where(and(eq(users.trainerId, trainer.id), isNull(foodComments.id)))
+    .groupBy(foodLogs.clientId);
+  const pendingFoodMap = new Map(pendingFoodRows.map((r) => [r.clientId, Number(r.c)]));
+
+  // สถานะการตั้งค่าโปรไฟล์ของลูกเทรนแต่ละคน
+  const profileRows = clients.length
+    ? await db
+        .select()
+        .from(clientProfiles)
+        .where(
+          inArray(
+            clientProfiles.userId,
+            clients.map((c) => c.id),
+          ),
+        )
+    : [];
+  const profileByClientId = new Map(profileRows.map((p) => [p.userId, p]));
+
+  const now = new Date();
+  const items: ClientListItem[] = clients.map((c) => {
+    const lastDate = lastTrainedMap.get(c.id);
+    let lastTrainedLabel: string | null = null;
+    let lastTrainedSort = -Infinity;
+    if (lastDate) {
+      const d = new Date(`${lastDate}T00:00:00`);
+      const days = differenceInCalendarDays(now, d);
+      lastTrainedLabel =
+        days <= 0 ? "วันนี้" : days === 1 ? "เมื่อวาน" : `${days} วันก่อน`;
+      lastTrainedSort = d.getTime();
+    }
+
+    const next = nextSessionMap.get(c.id);
+    const nextSessionLabel = next
+      ? `${format(new Date(`${next.date}T00:00:00`), "d MMM")} ${hourLabel(next.hour)}`
+      : null;
+
+    const profile = profileByClientId.get(c.id);
+    const hasHealthProfile = Boolean(profile?.goals || profile?.healthHistory);
+    const steps = computeClientSteps(c, hasHealthProfile);
+    const profileStepsDone = steps.filter((s) => s.done).length;
+
+    return {
+      id: c.id,
+      fullName: c.fullName,
+      nickname: c.nickname,
+      username: c.username,
+      active: c.active,
+      avatarPath: c.avatarPath,
+      createdAt: c.createdAt.toISOString(),
+      lastTrainedLabel,
+      lastTrainedSort,
+      nextSessionLabel,
+      pendingFoodCount: pendingFoodMap.get(c.id) ?? 0,
+      profileStepsDone,
+      profileStepsTotal: steps.length,
+    };
+  });
+  // ล่าสุดขึ้นก่อน (ค่า default ตอนโหลดหน้า)
+  items.reverse();
+
+  const activeCount = clients.filter((c) => c.active).length;
+  const totalPendingFood = pendingFoodRows.reduce((sum, r) => sum + Number(r.c), 0);
 
   return (
     <>
       <PageHeader title="ลูกเทรน" description="ลูกเทรนของคุณและประวัติของแต่ละคน" />
 
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 mb-6">
+        <StatCard label="ลูกเทรนทั้งหมด" value={clients.length} icon={Users} />
+        <StatCard
+          label="ใช้งานอยู่"
+          value={activeCount}
+          icon={UserCheck}
+          hint={
+            clients.length - activeCount > 0
+              ? `ปิดใช้งาน ${clients.length - activeCount} คน`
+              : undefined
+          }
+        />
+        <div className="col-span-2 sm:col-span-1">
+          <StatCard
+            label="อาหารรอตรวจ"
+            value={totalPendingFood}
+            icon={UtensilsCrossed}
+            hint="รวมทุกคน"
+          />
+        </div>
+      </div>
+
       <CreateClientForm />
 
       {clients.length === 0 ? (
-        <div className="text-center py-16 rounded-[var(--radius-lg)] border border-dashed border-border bg-card">
-          <Users className="size-8 mx-auto text-muted-foreground mb-2" />
-          <p className="text-muted-foreground">ยังไม่มีลูกเทรน — กดปุ่มเพิ่มลูกเทรนด้านบน</p>
+        <div className="text-center py-12 sm:py-16 rounded-[var(--radius-lg)] border border-dashed border-border bg-card px-4">
+          <Users className="size-7 sm:size-8 mx-auto text-muted-foreground mb-2" />
+          <p className="text-sm sm:text-base text-muted-foreground">
+            ยังไม่มีลูกเทรน — กดปุ่มเพิ่มลูกเทรนด้านบน
+          </p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {clients.map((c) => (
-            <Link
-              key={c.id}
-              href={`/trainer/clients/${c.id}`}
-              className="group flex items-center gap-4 rounded-[var(--radius-lg)] border border-border bg-card p-4 shadow-sm hover:border-primary/40 transition-colors"
-            >
-              <div className="h-11 w-11 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-semibold">
-                {c.fullName.charAt(0)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{c.fullName}</div>
-                <div className="text-sm text-muted-foreground">@{c.username}</div>
-              </div>
-              {!c.active && (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                  ปิดใช้งาน
-                </span>
-              )}
-              <ChevronRight className="size-5 text-muted-foreground group-hover:text-primary" />
-            </Link>
-          ))}
-        </div>
+        <ClientList clients={items} />
       )}
     </>
   );

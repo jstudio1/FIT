@@ -25,9 +25,11 @@ import {
   clampRangeForMode,
   type HourBucketMode,
 } from "@/lib/training-hours";
+import { computeTrainerSteps } from "@/lib/profile-progress";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { TrainingHoursChart } from "@/components/training-hours-chart";
+import { ProfileProgress } from "@/components/profile-progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -169,6 +171,7 @@ export default async function TrainerDashboardPage({
     Math.round((hToDate.getTime() - hFromDate.getTime()) / 86400000) + 1,
   );
   const avgPerDay = Math.round((totalHours / spanDays) * 10) / 10;
+  const profileSteps = computeTrainerSteps(trainer);
 
   return (
     <>
@@ -177,8 +180,14 @@ export default async function TrainerDashboardPage({
         description="ภาพรวมและตารางเทรนของวันนี้"
       />
 
+      {profileSteps.some((s) => !s.done) && (
+        <div className="mb-6">
+          <ProfileProgress steps={profileSteps} href="/trainer/profile" compact />
+        </div>
+      )}
+
       {/* สถิติ */}
-      <div className="grid gap-4 sm:grid-cols-3 mb-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 mb-6">
         <StatCard
           label="ลูกเทรนทั้งหมด"
           value={Number(clientCount?.c ?? 0)}
@@ -190,16 +199,18 @@ export default async function TrainerDashboardPage({
           icon={CalendarDays}
           hint={`เหลือ ${remaining} นัด`}
         />
-        <StatCard
-          label="อาหารรอตรวจ"
-          value={Number(pendingFood?.c ?? 0)}
-          icon={UtensilsCrossed}
-          hint="รูปที่ยังไม่ได้คอมเมนต์"
-        />
+        <div className="col-span-2 sm:col-span-1">
+          <StatCard
+            label="อาหารรอตรวจ"
+            value={Number(pendingFood?.c ?? 0)}
+            icon={UtensilsCrossed}
+            hint="รูปที่ยังไม่ได้คอมเมนต์"
+          />
+        </div>
       </div>
 
       {/* ชั่วโมงการเทรน */}
-      <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5 mb-6">
+      <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-4 sm:p-5 mb-6">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
             <Clock className="size-4.5 text-primary" />
@@ -254,7 +265,7 @@ export default async function TrainerDashboardPage({
           </Button>
         </form>
 
-        <div className="grid gap-4 sm:grid-cols-2 mb-5">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-5">
           <StatCard
             label="ชั่วโมงเทรนรวม"
             value={`${totalHours} ชม.`}
@@ -279,11 +290,13 @@ export default async function TrainerDashboardPage({
 
       {/* ตารางวันนี้ */}
       <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm overflow-hidden mb-6">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 sm:px-5 py-3 sm:py-3.5 border-b border-border">
           <div className="flex items-center gap-2">
-            <CalendarDays className="size-4.5 text-primary" />
-            <h3 className="font-semibold">ตารางวันนี้</h3>
-            <span className="text-sm text-muted-foreground">({today})</span>
+            <CalendarDays className="size-4.5 text-primary shrink-0" />
+            <h3 className="font-semibold text-sm sm:text-base">ตารางวันนี้</h3>
+            <span className="text-xs sm:text-sm text-muted-foreground">
+              ({today})
+            </span>
           </div>
           <span className="text-xs text-muted-foreground">
             เหลืออีก {remaining} นัด
@@ -291,7 +304,7 @@ export default async function TrainerDashboardPage({
         </div>
 
         {todays.length === 0 ? (
-          <div className="px-5 py-10 text-center text-muted-foreground">
+          <div className="px-4 sm:px-5 py-8 sm:py-10 text-center text-muted-foreground">
             วันนี้ไม่มีนัดเทรน 🎉
           </div>
         ) : (
@@ -304,17 +317,17 @@ export default async function TrainerDashboardPage({
                   <Link
                     href={`/trainer/clients/${b.clientId}`}
                     className={cn(
-                      "flex items-center gap-4 px-5 py-3.5 hover:bg-muted/50 transition-colors",
+                      "flex items-center gap-2.5 sm:gap-4 px-4 sm:px-5 py-3 sm:py-3.5 hover:bg-muted/50 transition-colors",
                       isDone && "opacity-60",
                     )}
                   >
-                    <div className="w-24 shrink-0 text-sm font-medium tabular-nums">
+                    <div className="w-20 sm:w-24 shrink-0 text-xs sm:text-sm font-medium tabular-nums">
                       {slotRangeLabel(b.hour)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div
                         className={cn(
-                          "font-medium truncate",
+                          "text-sm sm:text-base font-medium truncate",
                           isDone && "line-through",
                         )}
                       >
@@ -323,7 +336,7 @@ export default async function TrainerDashboardPage({
                     </div>
                     <span
                       className={cn(
-                        "text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap",
+                        "text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full font-medium whitespace-nowrap",
                         TONE_STYLES[s.tone],
                       )}
                     >
@@ -340,91 +353,105 @@ export default async function TrainerDashboardPage({
 
       {/* บันทึกผลลัพธ์ล่าสุด */}
       <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm overflow-hidden mb-6">
-        <div className="flex items-center gap-2 px-5 py-3.5 border-b border-border">
-          <LineChart className="size-4.5 text-primary" />
-          <h3 className="font-semibold">บันทึกผลลัพธ์ล่าสุด</h3>
+        <div className="flex items-center gap-2 px-4 sm:px-5 py-3 sm:py-3.5 border-b border-border">
+          <LineChart className="size-4.5 text-primary shrink-0" />
+          <h3 className="font-semibold text-sm sm:text-base">
+            บันทึกผลลัพธ์ล่าสุด
+          </h3>
         </div>
 
         {recentResults.length === 0 ? (
-          <div className="px-5 py-10 text-center text-muted-foreground">
+          <div className="px-4 sm:px-5 py-8 sm:py-10 text-center text-muted-foreground">
             ยังไม่มีลูกเทรนบันทึกผลลัพธ์
           </div>
         ) : (
           <ul className="divide-y divide-border">
-            {recentResults.map((r) => (
-              <li key={r.id}>
-                <Link
-                  href={`/trainer/clients/${r.clientId}`}
-                  className="flex items-center gap-4 px-5 py-3 hover:bg-muted/50 transition-colors"
-                >
-                  <div className="h-9 w-9 shrink-0 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-sm font-semibold">
-                    {r.clientName.charAt(0)}
-                  </div>
-                  <div className="w-32 shrink-0">
-                    <div className="font-medium text-sm truncate">
-                      {r.clientName}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {format(r.measuredAt, "dd/MM/yyyy")}
-                    </div>
-                  </div>
-                  <span
-                    className={cn(
-                      "shrink-0 text-xs px-2 py-0.5 rounded-full",
-                      r.phase === "POST"
-                        ? "bg-accent text-accent-foreground"
-                        : "bg-muted text-muted-foreground",
-                    )}
+            {recentResults.map((r) => {
+              const hasMetrics =
+                r.weight != null ||
+                r.waist != null ||
+                r.muscleMass != null ||
+                r.bodyFat != null ||
+                r.note;
+              return (
+                <li key={r.id}>
+                  <Link
+                    href={`/trainer/clients/${r.clientId}`}
+                    className="block px-4 sm:px-5 py-2.5 sm:py-3 hover:bg-muted/50 transition-colors"
                   >
-                    {r.phase === "POST" ? "หลังเทรน" : "ก่อนเทรน"}
-                  </span>
-                  <div className="flex-1 min-w-0 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    {r.weight != null && (
-                      <span>
-                        น้ำหนัก{" "}
-                        <span className="font-medium text-foreground">
-                          {r.weight}
-                        </span>{" "}
-                        กก.
+                    <div className="flex items-center gap-2.5 sm:gap-4">
+                      <div className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-xs sm:text-sm font-semibold">
+                        {r.clientName.charAt(0)}
+                      </div>
+                      <div className="min-w-0 flex-1 sm:w-32 sm:flex-none">
+                        <div className="font-medium text-sm truncate">
+                          {r.clientName}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {format(r.measuredAt, "dd/MM/yyyy")}
+                        </div>
+                      </div>
+                      <span
+                        className={cn(
+                          "shrink-0 text-[11px] sm:text-xs px-2 py-0.5 rounded-full whitespace-nowrap",
+                          r.phase === "POST"
+                            ? "bg-accent text-accent-foreground"
+                            : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {r.phase === "POST" ? "หลังเทรน" : "ก่อนเทรน"}
                       </span>
+                      <ChevronRight className="size-4 text-muted-foreground shrink-0" />
+                    </div>
+                    {hasMetrics && (
+                      <div className="mt-1.5 sm:mt-1 flex flex-wrap gap-x-3 gap-y-1 pl-[42px] sm:pl-[52px] text-xs text-muted-foreground">
+                        {r.weight != null && (
+                          <span>
+                            น้ำหนัก{" "}
+                            <span className="font-medium text-foreground">
+                              {r.weight}
+                            </span>{" "}
+                            กก.
+                          </span>
+                        )}
+                        {r.waist != null && (
+                          <span>
+                            รอบเอว{" "}
+                            <span className="font-medium text-foreground">
+                              {r.waist}
+                            </span>{" "}
+                            ซม.
+                          </span>
+                        )}
+                        {r.muscleMass != null && (
+                          <span>
+                            กล้าม{" "}
+                            <span className="font-medium text-foreground">
+                              {r.muscleMass}
+                            </span>{" "}
+                            กก.
+                          </span>
+                        )}
+                        {r.bodyFat != null && (
+                          <span>
+                            ไขมัน{" "}
+                            <span className="font-medium text-foreground">
+                              {r.bodyFat}
+                            </span>{" "}
+                            %
+                          </span>
+                        )}
+                        {r.note && (
+                          <span className="italic truncate max-w-[200px]">
+                            “{r.note}”
+                          </span>
+                        )}
+                      </div>
                     )}
-                    {r.waist != null && (
-                      <span>
-                        รอบเอว{" "}
-                        <span className="font-medium text-foreground">
-                          {r.waist}
-                        </span>{" "}
-                        ซม.
-                      </span>
-                    )}
-                    {r.muscleMass != null && (
-                      <span>
-                        กล้าม{" "}
-                        <span className="font-medium text-foreground">
-                          {r.muscleMass}
-                        </span>{" "}
-                        กก.
-                      </span>
-                    )}
-                    {r.bodyFat != null && (
-                      <span>
-                        ไขมัน{" "}
-                        <span className="font-medium text-foreground">
-                          {r.bodyFat}
-                        </span>{" "}
-                        %
-                      </span>
-                    )}
-                    {r.note && (
-                      <span className="italic truncate max-w-[200px]">
-                        “{r.note}”
-                      </span>
-                    )}
-                  </div>
-                  <ChevronRight className="size-4 text-muted-foreground shrink-0" />
-                </Link>
-              </li>
-            ))}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

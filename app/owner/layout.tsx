@@ -8,7 +8,12 @@ export default async function OwnerLayout({
 }) {
   const user = await requireRole("OWNER");
   return (
-    <AppShell role={user.role} name={user.fullName}>
+    <AppShell
+      role={user.role}
+      name={user.fullName}
+      userId={user.id}
+      avatarPath={user.avatarPath}
+    >
       {children}
     </AppShell>
   );

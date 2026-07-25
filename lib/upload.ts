@@ -47,3 +47,38 @@ export async function readFoodImage(name: string): Promise<Buffer | null> {
     return null;
   }
 }
+
+/* ---------------- รูปโปรไฟล์ ---------------- */
+
+const AVATAR_DIR = path.join(process.cwd(), "uploads", "avatars");
+
+/** บันทึกรูปโปรไฟล์ (ครอปสี่เหลี่ยมจัตุรัส 512x512, webp) เก็บนอก public — คืนชื่อไฟล์ */
+export async function saveAvatarImage(buffer: Buffer): Promise<string> {
+  await fs.mkdir(AVATAR_DIR, { recursive: true });
+  const name = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}.webp`;
+  await validateFoodImage(buffer);
+  await sharp(buffer, { limitInputPixels: MAX_INPUT_PIXELS, failOn: "warning" })
+    .rotate()
+    .resize(512, 512, { fit: "cover", position: "attention" })
+    .webp({ quality: 85 })
+    .toFile(path.join(AVATAR_DIR, name));
+  return name;
+}
+
+export async function deleteAvatarImage(name: string): Promise<void> {
+  if (!/^[\w.-]+\.webp$/.test(name)) return;
+  try {
+    await fs.unlink(path.join(AVATAR_DIR, name));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+}
+
+export async function readAvatarImage(name: string): Promise<Buffer | null> {
+  if (!/^[\w.-]+\.webp$/.test(name)) return null;
+  try {
+    return await fs.readFile(path.join(AVATAR_DIR, name));
+  } catch {
+    return null;
+  }
+}

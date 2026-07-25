@@ -41,14 +41,17 @@ export async function verifySession(
 ): Promise<SessionPayload | null> {
   if (!token) return null;
   try {
+    let payload: JWTPayload;
     try {
-      const { payload } = await jwtVerify(token, secret);
-      return payload as SessionPayload;
+      ({ payload } = await jwtVerify(token, secret));
     } catch (error) {
       if (!previousSecret) throw error;
-      const { payload } = await jwtVerify(token, previousSecret);
-      return payload as SessionPayload;
+      ({ payload } = await jwtVerify(token, previousSecret));
     }
+    // โทเค็นเก่าก่อนมี sessionVersion (sv) จะไม่มีฟิลด์นี้ — ถือว่าใช้ไม่ได้แล้ว
+    // (กันไม่ให้เกิด redirect loop ระหว่าง middleware กับ getSessionUser ตอน sv ไม่ตรงกัน)
+    if (typeof (payload as SessionPayload).sv !== "number") return null;
+    return payload as SessionPayload;
   } catch {
     return null;
   }

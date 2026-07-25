@@ -25,7 +25,7 @@ export function CreateClientForm() {
 
   if (!open) {
     return (
-      <Button onClick={() => setOpen(true)}>
+      <Button onClick={() => setOpen(true)} className="w-full sm:w-auto mb-6">
         <UserPlus className="size-4" />
         เพิ่มลูกเทรน
       </Button>
@@ -33,12 +33,12 @@ export function CreateClientForm() {
   }
 
   return (
-    <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold">สร้างบัญชีลูกเทรนใหม่</h3>
+    <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-4 sm:p-5 mb-6">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <h3 className="font-semibold text-sm sm:text-base">สร้างบัญชีลูกเทรนใหม่</h3>
         <button
           onClick={() => setOpen(false)}
-          className="p-1.5 rounded-md hover:bg-muted text-muted-foreground"
+          className="p-1.5 -m-1.5 rounded-md hover:bg-muted text-muted-foreground"
         >
           <X className="size-4" />
         </button>
@@ -46,7 +46,7 @@ export function CreateClientForm() {
       <form
         ref={formRef}
         action={formAction}
-        className="grid gap-4 sm:grid-cols-3"
+        className="grid gap-3 sm:gap-4 sm:grid-cols-3"
       >
         <div>
           <Label htmlFor="c-fullName">ชื่อ-นามสกุล</Label>
@@ -62,15 +62,20 @@ export function CreateClientForm() {
             id="c-password"
             name="password"
             type="text"
-            placeholder="อย่างน้อย 6 ตัวอักษร"
+            placeholder="อย่างน้อย 12 ตัวอักษร"
             required
           />
         </div>
-        <div className="sm:col-span-3 flex gap-2">
-          <Button type="submit" disabled={pending}>
+        <div className="sm:col-span-3 flex flex-col sm:flex-row gap-2">
+          <Button type="submit" disabled={pending} className="w-full sm:w-auto">
             {pending ? "กำลังสร้าง..." : "สร้างบัญชี"}
           </Button>
-          <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setOpen(false)}
+            className="w-full sm:w-auto"
+          >
             ยกเลิก
           </Button>
         </div>

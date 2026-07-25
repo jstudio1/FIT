@@ -8,7 +8,12 @@ export default async function TrainerLayout({
 }) {
   const user = await requireRole("TRAINER");
   return (
-    <AppShell role={user.role} name={user.fullName}>
+    <AppShell
+      role={user.role}
+      name={user.fullName}
+      userId={user.id}
+      avatarPath={user.avatarPath}
+    >
       {children}
     </AppShell>
   );
