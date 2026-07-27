@@ -1,7 +1,7 @@
 import { addDays } from "date-fns";
 import { and, eq, gte, lt, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { foodLogs, foodComments } from "@/lib/db/schema";
+import { foodLogs, foodComments, clientProfiles } from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
 import { getWeekDays, weekStart, toDateStr } from "@/lib/schedule";
 import {
@@ -99,6 +99,25 @@ export default async function ClientFoodPage({
     .filter((x): x is NutritionEntry => !!x);
   const totals = sumTotals(selectedNutrition);
 
+  const [profile] = await db
+    .select({
+      targetCalories: clientProfiles.targetCalories,
+      targetCarbs: clientProfiles.targetCarbs,
+      targetProtein: clientProfiles.targetProtein,
+      targetFat: clientProfiles.targetFat,
+    })
+    .from(clientProfiles)
+    .where(eq(clientProfiles.userId, client.id))
+    .limit(1);
+  const target = profile
+    ? {
+        calories: profile.targetCalories,
+        carbs: profile.targetCarbs,
+        protein: profile.targetProtein,
+        fat: profile.targetFat,
+      }
+    : null;
+
   return (
     <>
       <DateStrip
@@ -111,7 +130,7 @@ export default async function ClientFoodPage({
 
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-[320px_1fr]">
         <div className="space-y-4">
-          <FoodDiarySummary totals={totals} />
+          <FoodDiarySummary totals={totals} target={target} />
           <FoodUpload />
         </div>
 

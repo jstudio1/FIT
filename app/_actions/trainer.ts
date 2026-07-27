@@ -108,6 +108,10 @@ export async function saveProfileAction(
     mealsPerDay: num(formData.get("mealsPerDay")),
     alcoholFrequency: str(formData.get("alcoholFrequency")),
     disciplineNote: str(formData.get("disciplineNote")),
+    targetCalories: num(formData.get("targetCalories")),
+    targetCarbs: num(formData.get("targetCarbs")),
+    targetProtein: num(formData.get("targetProtein")),
+    targetFat: num(formData.get("targetFat")),
   };
 
   // upsert (แถวถูกสร้างตอนสร้างบัญชี แต่กันพลาดด้วยการเช็คก่อน)

@@ -89,6 +89,25 @@ export function ProfileForm({
         </div>
       </Section>
 
+      <Section title="เป้าหมายโภชนาการต่อวัน">
+        <div>
+          <Label htmlFor="targetCalories">แคลอรี่ (แคล/วัน)</Label>
+          <Input id="targetCalories" name="targetCalories" type="number" min="0" defaultValue={v(profile?.targetCalories)} placeholder="เช่น 1800" />
+        </div>
+        <div>
+          <Label htmlFor="targetCarbs">คาร์บ (ก./วัน)</Label>
+          <Input id="targetCarbs" name="targetCarbs" type="number" min="0" defaultValue={v(profile?.targetCarbs)} placeholder="เช่น 180" />
+        </div>
+        <div>
+          <Label htmlFor="targetProtein">โปรตีน (ก./วัน)</Label>
+          <Input id="targetProtein" name="targetProtein" type="number" min="0" defaultValue={v(profile?.targetProtein)} placeholder="เช่น 120" />
+        </div>
+        <div>
+          <Label htmlFor="targetFat">ไขมัน (ก./วัน)</Label>
+          <Input id="targetFat" name="targetFat" type="number" min="0" defaultValue={v(profile?.targetFat)} placeholder="เช่น 60" />
+        </div>
+      </Section>
+
       <Section title="พื้นฐาน & ไลฟ์สไตล์">
         <div className="sm:col-span-2">
           <Label htmlFor="exerciseBackground">พื้นฐานการออกกำลังกาย</Label>
