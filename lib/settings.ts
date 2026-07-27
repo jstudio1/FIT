@@ -8,6 +8,10 @@ export const DEFAULT_SETTINGS: Omit<SiteSettings, "id" | "updatedAt"> = {
   metaDescription: "ระบบสำหรับเทรนเนอร์จัดการลูกเทรนของตัวเอง",
   keywords: null,
   contactEmail: null,
+  popupEnabled: false,
+  popupImagePath: null,
+  popupTitle: null,
+  popupLinkUrl: null,
 };
 
 export async function getSiteSettings(): Promise<
@@ -26,6 +30,10 @@ export async function getSiteSettings(): Promise<
       metaDescription: row.metaDescription || DEFAULT_SETTINGS.metaDescription,
       keywords: row.keywords,
       contactEmail: row.contactEmail,
+      popupEnabled: row.popupEnabled,
+      popupImagePath: row.popupImagePath,
+      popupTitle: row.popupTitle,
+      popupLinkUrl: row.popupLinkUrl,
     };
   } catch {
     return DEFAULT_SETTINGS;

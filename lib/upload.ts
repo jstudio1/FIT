@@ -82,3 +82,38 @@ export async function readAvatarImage(name: string): Promise<Buffer | null> {
     return null;
   }
 }
+
+/* ---------------- รูปป็อปอัพประกาศ ---------------- */
+
+const POPUP_DIR = path.join(process.cwd(), "uploads", "popups");
+
+/** บันทึกรูปป็อปอัพ (คงสัดส่วนเดิม ไม่ครอป, webp) เก็บนอก public — คืนชื่อไฟล์ */
+export async function savePopupImage(buffer: Buffer): Promise<string> {
+  await fs.mkdir(POPUP_DIR, { recursive: true });
+  const name = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}.webp`;
+  await validateFoodImage(buffer);
+  await sharp(buffer, { limitInputPixels: MAX_INPUT_PIXELS, failOn: "warning" })
+    .rotate()
+    .resize(1080, 1080, { fit: "inside", withoutEnlargement: true })
+    .webp({ quality: 85 })
+    .toFile(path.join(POPUP_DIR, name));
+  return name;
+}
+
+export async function deletePopupImage(name: string): Promise<void> {
+  if (!/^[\w.-]+\.webp$/.test(name)) return;
+  try {
+    await fs.unlink(path.join(POPUP_DIR, name));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+}
+
+export async function readPopupImage(name: string): Promise<Buffer | null> {
+  if (!/^[\w.-]+\.webp$/.test(name)) return null;
+  try {
+    return await fs.readFile(path.join(POPUP_DIR, name));
+  } catch {
+    return null;
+  }
+}

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import {
@@ -111,8 +111,8 @@ export async function updateTrainerAction(
   };
 }
 
-/* ---------------- Broadcast แจ้งเตือนถึงเทรนเนอร์ทุกคน ---------------- */
-export async function broadcastToTrainersAction(
+/* ---------------- Broadcast แจ้งเตือนถึงเทรนเนอร์/ลูกเทรน (ทั้งหมดหรือเลือกรายคน) ---------------- */
+export async function broadcastAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -120,32 +120,45 @@ export async function broadcastToTrainersAction(
   const title = String(formData.get("title") ?? "").trim();
   const message = String(formData.get("message") ?? "").trim();
   const activeOnly = formData.get("activeOnly") === "on";
+  const targetRole = String(formData.get("targetRole") ?? "");
+  const mode = String(formData.get("mode") ?? "ALL");
 
   if (title.length < 1 || title.length > 191)
     return { error: "กรุณากรอกหัวข้อ" };
   if (message.length > 1000) return { error: "ข้อความยาวเกินไป" };
+  if (targetRole !== "TRAINER" && targetRole !== "CLIENT")
+    return { error: "กรุณาเลือกกลุ่มผู้รับ" };
 
-  const trainers = await db
+  const conditions = [eq(users.role, targetRole)];
+  if (activeOnly) conditions.push(eq(users.active, true));
+
+  if (mode === "SPECIFIC") {
+    const ids = formData
+      .getAll("userIds")
+      .map((v) => Number(v))
+      .filter((n) => Number.isFinite(n));
+    if (ids.length === 0) return { error: "เลือกผู้รับอย่างน้อย 1 คน" };
+    conditions.push(inArray(users.id, ids));
+  }
+
+  const recipients = await db
     .select({ id: users.id })
     .from(users)
-    .where(
-      activeOnly
-        ? and(eq(users.role, "TRAINER"), eq(users.active, true))
-        : eq(users.role, "TRAINER"),
-    );
+    .where(and(...conditions));
 
-  if (trainers.length === 0) return { error: "ยังไม่มีเทรนเนอร์ในระบบ" };
+  if (recipients.length === 0) return { error: "ไม่พบผู้รับตามเงื่อนไขที่เลือก" };
 
   await db.insert(notifications).values(
-    trainers.map((t) => ({
-      userId: t.id,
+    recipients.map((r) => ({
+      userId: r.id,
       type: "broadcast",
       title,
       message: message || null,
     })),
   );
 
-  return { success: `ส่งประกาศถึงเทรนเนอร์ ${trainers.length} คนแล้ว` };
+  const roleLabel = targetRole === "TRAINER" ? "เทรนเนอร์" : "ลูกเทรน";
+  return { success: `ส่งประกาศถึง${roleLabel} ${recipients.length} คนแล้ว` };
 }
 
 /* ---------------- บันทึกตั้งค่าเว็บ/SEO ---------------- */
@@ -176,4 +189,36 @@ export async function saveSiteSettingsAction(
 
   revalidatePath("/", "layout");
   return { success: "บันทึกการตั้งค่าเว็บไซต์แล้ว" };
+}
+
+/* ---------------- ตั้งค่าป็อปอัพประกาศ ---------------- */
+export async function savePopupSettingsAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireRole("OWNER");
+  const popupEnabled = formData.get("popupEnabled") === "on";
+  const popupTitle = String(formData.get("popupTitle") ?? "").trim() || null;
+  const popupLinkUrl = String(formData.get("popupLinkUrl") ?? "").trim() || null;
+
+  if (popupTitle && popupTitle.length > 191) return { error: "หัวข้อยาวเกินไป" };
+  if (popupLinkUrl && popupLinkUrl.length > 500) return { error: "ลิงก์ยาวเกินไป" };
+  if (popupLinkUrl && !/^https?:\/\//.test(popupLinkUrl))
+    return { error: "ลิงก์ต้องขึ้นต้นด้วย http:// หรือ https://" };
+
+  const [existing] = await db
+    .select({ id: siteSettings.id })
+    .from(siteSettings)
+    .where(eq(siteSettings.id, 1))
+    .limit(1);
+
+  const data = { popupEnabled, popupTitle, popupLinkUrl };
+  if (existing) {
+    await db.update(siteSettings).set(data).where(eq(siteSettings.id, 1));
+  } else {
+    await db.insert(siteSettings).values({ id: 1, ...data });
+  }
+
+  revalidatePath("/", "layout");
+  return { success: "บันทึกการตั้งค่าป็อปอัพแล้ว" };
 }

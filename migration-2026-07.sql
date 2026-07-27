@@ -123,3 +123,17 @@ ALTER TABLE food_logs
   ADD COLUMN auto_label VARCHAR(255) NULL,
   ADD COLUMN reviewed_at TIMESTAMP NULL,
   ADD COLUMN reviewed_by ENUM('AUTO','TRAINER') NULL;
+
+-- 9) เป้าหมายโภชนาการต่อวันที่เทรนเนอร์กำหนดให้ลูกเทรนแต่ละคน
+ALTER TABLE client_profiles
+  ADD COLUMN target_calories INT NULL,
+  ADD COLUMN target_carbs INT NULL,
+  ADD COLUMN target_protein INT NULL,
+  ADD COLUMN target_fat INT NULL;
+
+-- 10) ป็อปอัพประกาศ (โชว์ให้เทรนเนอร์/ลูกเทรนตอนล็อกอิน)
+ALTER TABLE site_settings
+  ADD COLUMN popup_enabled BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN popup_image_path VARCHAR(255) NULL,
+  ADD COLUMN popup_title VARCHAR(191) NULL,
+  ADD COLUMN popup_link_url VARCHAR(500) NULL;

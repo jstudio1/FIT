@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { desc, eq, sql } from "drizzle-orm";
-import { Users } from "lucide-react";
+import { Users, Mail, Phone } from "lucide-react";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { PageHeader } from "@/components/page-header";
@@ -45,7 +45,7 @@ export default async function OwnerTrainersPage() {
         <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm overflow-hidden">
           <div className="hidden sm:grid grid-cols-[1fr_1fr_auto_auto] gap-4 px-5 py-3 border-b border-border text-xs font-medium text-muted-foreground uppercase">
             <span>ชื่อ</span>
-            <span>ชื่อผู้ใช้</span>
+            <span>ติดต่อ</span>
             <span className="text-center">ลูกเทรน</span>
             <span className="text-right">สถานะ</span>
           </div>
@@ -56,11 +56,45 @@ export default async function OwnerTrainersPage() {
             >
               <Link
                 href={`/owner/trainers/${t.id}`}
-                className="font-medium hover:text-primary hover:underline"
+                className="flex items-center gap-3 font-medium hover:text-primary group min-w-0"
               >
-                {t.fullName}
+                <div className="h-9 w-9 shrink-0 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-sm font-semibold overflow-hidden">
+                  {t.avatarPath ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/api/avatar/${t.id}`}
+                      alt={t.fullName}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    t.fullName.charAt(0)
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="truncate group-hover:underline">
+                    {t.fullName}
+                    {t.nickname && (
+                      <span className="text-muted-foreground font-normal"> ({t.nickname})</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground font-normal">@{t.username}</div>
+                </div>
               </Link>
-              <div className="text-sm text-muted-foreground">@{t.username}</div>
+              <div className="flex flex-col gap-0.5 text-xs text-muted-foreground min-w-0">
+                {t.email && (
+                  <span className="inline-flex items-center gap-1 truncate">
+                    <Mail className="size-3 shrink-0" />
+                    {t.email}
+                  </span>
+                )}
+                {t.phone && (
+                  <span className="inline-flex items-center gap-1 truncate">
+                    <Phone className="size-3 shrink-0" />
+                    {t.phone}
+                  </span>
+                )}
+                {!t.email && !t.phone && <span>—</span>}
+              </div>
               <div className="text-sm sm:text-center">
                 <span className="sm:hidden text-muted-foreground">ลูกเทรน: </span>
                 {counts.get(t.id) ?? 0} คน

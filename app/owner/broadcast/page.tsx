@@ -1,7 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { Megaphone } from "lucide-react";
 import { db } from "@/lib/db";
-import { notifications } from "@/lib/db/schema";
+import { notifications, users } from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
 import { PageHeader } from "@/components/page-header";
 import { BroadcastForm } from "@/components/broadcast-form";
@@ -10,6 +10,19 @@ export const dynamic = "force-dynamic";
 
 export default async function OwnerBroadcastPage() {
   await requireRole("OWNER");
+
+  const [trainers, clients] = await Promise.all([
+    db
+      .select({ id: users.id, fullName: users.fullName, username: users.username, active: users.active })
+      .from(users)
+      .where(eq(users.role, "TRAINER"))
+      .orderBy(users.fullName),
+    db
+      .select({ id: users.id, fullName: users.fullName, username: users.username, active: users.active })
+      .from(users)
+      .where(eq(users.role, "CLIENT"))
+      .orderBy(users.fullName),
+  ]);
 
   // ประกาศล่าสุด (แยกตามหัวข้อ/เวลา) — ดึงรายการ broadcast ล่าสุด
   const recent = await db
@@ -35,11 +48,11 @@ export default async function OwnerBroadcastPage() {
   return (
     <>
       <PageHeader
-        title="ประกาศถึงเทรนเนอร์"
-        description="ส่งข้อความแจ้งเตือนไปยังเทรนเนอร์ทุกคนพร้อมกัน"
+        title="ประกาศ"
+        description="ส่งข้อความแจ้งเตือนถึงเทรนเนอร์หรือลูกเทรน — ทั้งหมดหรือเลือกเฉพาะบางคน"
       />
 
-      <BroadcastForm />
+      <BroadcastForm trainers={trainers} clients={clients} />
 
       {history.length > 0 && (
         <div className="mt-8 max-w-xl">

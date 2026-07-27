@@ -17,7 +17,11 @@ export default async function OwnerAllClientsPage() {
     .select({
       id: users.id,
       fullName: users.fullName,
+      nickname: users.nickname,
       username: users.username,
+      email: users.email,
+      phone: users.phone,
+      avatarPath: users.avatarPath,
       active: users.active,
       trainerName: trainerU.fullName,
     })
@@ -42,7 +46,7 @@ export default async function OwnerAllClientsPage() {
         <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm overflow-hidden">
           <div className="hidden sm:grid grid-cols-[1fr_1fr_1fr_auto] gap-4 px-5 py-3 border-b border-border text-xs font-medium text-muted-foreground uppercase">
             <span>ชื่อ</span>
-            <span>ชื่อผู้ใช้</span>
+            <span>ติดต่อ</span>
             <span>เทรนเนอร์</span>
             <span />
           </div>
@@ -52,15 +56,41 @@ export default async function OwnerAllClientsPage() {
               href={`/owner/clients/${c.id}`}
               className="grid sm:grid-cols-[1fr_1fr_1fr_auto] gap-1 sm:gap-4 px-5 py-3.5 border-b border-border last:border-0 items-center hover:bg-muted/50 transition-colors"
             >
-              <div className="font-medium flex items-center gap-2">
-                {c.fullName}
-                {!c.active && (
-                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
-                    ปิด
-                  </span>
-                )}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-9 w-9 shrink-0 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-sm font-semibold overflow-hidden">
+                  {c.avatarPath ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/api/avatar/${c.id}`}
+                      alt={c.fullName}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    c.fullName.charAt(0)
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="font-medium flex items-center gap-2 truncate">
+                    {c.fullName}
+                    {c.nickname && (
+                      <span className="text-muted-foreground font-normal text-sm">
+                        ({c.nickname})
+                      </span>
+                    )}
+                    {!c.active && (
+                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">
+                        ปิด
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground truncate">@{c.username}</div>
+                </div>
               </div>
-              <div className="text-sm text-muted-foreground">@{c.username}</div>
+              <div className="flex flex-col gap-0.5 text-xs text-muted-foreground min-w-0">
+                {c.email && <span className="truncate">{c.email}</span>}
+                {c.phone && <span className="truncate">{c.phone}</span>}
+                {!c.email && !c.phone && <span>—</span>}
+              </div>
               <div className="text-sm">
                 <span className="sm:hidden text-muted-foreground">เทรนเนอร์: </span>
                 {c.trainerName ?? "—"}

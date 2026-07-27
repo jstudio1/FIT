@@ -58,6 +58,11 @@ export const clientProfiles = mysqlTable("client_profiles", {
   mealsPerDay: int("meals_per_day"),
   alcoholFrequency: varchar("alcohol_frequency", { length: 64 }),
   disciplineNote: text("discipline_note"),
+  // เป้าหมายโภชนาการต่อวันที่เทรนเนอร์กำหนดให้
+  targetCalories: int("target_calories"),
+  targetCarbs: int("target_carbs"), // กรัม
+  targetProtein: int("target_protein"), // กรัม
+  targetFat: int("target_fat"), // กรัม
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
 
@@ -290,6 +295,11 @@ export const siteSettings = mysqlTable("site_settings", {
     .default("ระบบสำหรับเทรนเนอร์จัดการลูกเทรนของตัวเอง"),
   keywords: varchar("keywords", { length: 300 }),
   contactEmail: varchar("contact_email", { length: 128 }),
+  // ป็อปอัพประกาศ (โชว์ให้เทรนเนอร์/ลูกเทรนตอนล็อกอิน)
+  popupEnabled: boolean("popup_enabled").notNull().default(false),
+  popupImagePath: varchar("popup_image_path", { length: 255 }),
+  popupTitle: varchar("popup_title", { length: 191 }),
+  popupLinkUrl: varchar("popup_link_url", { length: 500 }),
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
 

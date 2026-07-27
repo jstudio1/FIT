@@ -15,7 +15,19 @@ export type BookingRow = {
   isPast: boolean;
 };
 
-export function TrainerAttendance({ bookings }: { bookings: BookingRow[] }) {
+const STATUS_LABEL: Record<BookingRow["status"], string> = {
+  BOOKED: "รอถึงเวลา",
+  COMPLETED: "มาเทรน",
+  NO_SHOW: "ขาด",
+};
+
+export function TrainerAttendance({
+  bookings,
+  readOnly = false,
+}: {
+  bookings: BookingRow[];
+  readOnly?: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -44,7 +56,20 @@ export function TrainerAttendance({ bookings }: { bookings: BookingRow[] }) {
             <span className="text-muted-foreground"> · {b.timeLabel}</span>
           </div>
 
-          {!b.isPast ? (
+          {readOnly ? (
+            <span
+              className={cn(
+                "text-xs px-2.5 py-1 rounded-md",
+                b.status === "COMPLETED"
+                  ? "bg-primary/10 text-primary"
+                  : b.status === "NO_SHOW"
+                    ? "bg-destructive/10 text-destructive"
+                    : "text-muted-foreground",
+              )}
+            >
+              {STATUS_LABEL[b.status]}
+            </span>
+          ) : !b.isPast ? (
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="size-3.5" /> รอถึงเวลา
             </span>
