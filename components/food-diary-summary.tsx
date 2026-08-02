@@ -1,3 +1,4 @@
+import { AlertTriangle } from "lucide-react";
 import type { DailyTotals } from "@/lib/nutrition";
 
 const COLORS = {
@@ -33,16 +34,27 @@ function RemainingRow({
 
   return (
     <div>
-      <div className="flex items-center justify-between text-xs mb-1">
+      <div className="flex items-center justify-between gap-2 text-xs mb-1">
         <span className="font-medium" style={{ color }}>
           {label}
         </span>
-        <span className={over ? "text-destructive font-medium" : "text-muted-foreground"}>
-          {over
-            ? `เกิน ${Math.abs(remaining)}${unit}`
-            : `เหลือ ${remaining}${unit}`}
-          <span className="text-muted-foreground"> ({consumed}/{target}{unit})</span>
-        </span>
+        {over ? (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">
+            <AlertTriangle className="size-3" />
+            เกิน {Math.abs(remaining)}
+            {unit}
+            <span className="text-destructive/70 font-normal">
+              ({consumed}/{target}
+              {unit})
+            </span>
+          </span>
+        ) : (
+          <span className="text-muted-foreground">
+            เหลือ {remaining}
+            {unit}
+            <span> ({consumed}/{target}{unit})</span>
+          </span>
+        )}
       </div>
       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
         <div

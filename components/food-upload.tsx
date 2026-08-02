@@ -128,6 +128,10 @@ export function FoodUpload() {
               placeholder="เช่น ข้าวกล้อง + อกไก่ย่าง"
               className="min-h-10"
             />
+            <p className="text-xs text-muted-foreground mt-1.5">
+              บอกส่วนประกอบคร่าวๆ ช่วยให้ AI วิเคราะห์และประมาณแคลอรี่ได้แม่นยำขึ้น
+              โดยเฉพาะจานที่มองจากรูปอย่างเดียวแยกยาก
+            </p>
           </div>
         </div>
       </div>

@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
         .set({ autoStatus: "PROCESSING" })
         .where(eq(foodLogs.id, foodLogId));
 
-      const estimate = await estimateNutrition(buffer);
+      const estimate = await estimateNutrition(buffer, mealType, note);
 
       if (estimate.ok) {
         await db

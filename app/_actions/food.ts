@@ -83,6 +83,8 @@ export async function retryAutoNutritionAction(foodLogId: number): Promise<Res> 
     .select({
       clientId: foodLogs.clientId,
       imagePath: foodLogs.imagePath,
+      mealType: foodLogs.mealType,
+      note: foodLogs.note,
       reviewedAt: foodLogs.reviewedAt,
     })
     .from(foodLogs)
@@ -97,7 +99,7 @@ export async function retryAutoNutritionAction(foodLogId: number): Promise<Res> 
 
   await db.update(foodLogs).set({ autoStatus: "PROCESSING" }).where(eq(foodLogs.id, foodLogId));
 
-  const estimate = await estimateNutrition(buffer);
+  const estimate = await estimateNutrition(buffer, row.mealType, row.note);
 
   if (!estimate.ok) {
     await db.update(foodLogs).set({ autoStatus: "FAILED" }).where(eq(foodLogs.id, foodLogId));
