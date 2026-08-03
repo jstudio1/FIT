@@ -11,6 +11,8 @@ import {
   UserCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { tagColorClass } from "@/lib/tag-colors";
+import type { TagOption } from "@/components/client-tag-picker";
 
 export type ClientListItem = {
   id: number;
@@ -26,6 +28,7 @@ export type ClientListItem = {
   pendingFoodCount: number;
   profileStepsDone: number;
   profileStepsTotal: number;
+  tagIds: number[];
 };
 
 type SortKey = "recent" | "name" | "lastTrained" | "profileIncomplete";
@@ -37,9 +40,25 @@ const SORT_LABEL: Record<SortKey, string> = {
   profileIncomplete: "โปรไฟล์ยังไม่ครบก่อน",
 };
 
-export function ClientList({ clients }: { clients: ClientListItem[] }) {
+export function ClientList({
+  clients,
+  allTags,
+}: {
+  clients: ClientListItem[];
+  allTags: TagOption[];
+}) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("recent");
+  const [activeTagIds, setActiveTagIds] = useState<Set<number>>(new Set());
+
+  const toggleTagFilter = (tagId: number) => {
+    setActiveTagIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(tagId)) next.delete(tagId);
+      else next.add(tagId);
+      return next;
+    });
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -51,6 +70,9 @@ export function ClientList({ clients }: { clients: ClientListItem[] }) {
           c.username.toLowerCase().includes(q) ||
           (c.nickname?.toLowerCase().includes(q) ?? false),
       );
+    }
+    if (activeTagIds.size > 0) {
+      list = list.filter((c) => c.tagIds.some((id) => activeTagIds.has(id)));
     }
     const sorted = [...list];
     if (sort === "name") {
@@ -66,12 +88,31 @@ export function ClientList({ clients }: { clients: ClientListItem[] }) {
       );
     }
     return sorted;
-  }, [clients, query, sort]);
+  }, [clients, query, sort, activeTagIds]);
 
   if (clients.length === 0) return null;
 
   return (
     <div>
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-3">
+          {allTags.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => toggleTagFilter(t.id)}
+              className={cn(
+                "text-xs px-2.5 py-1 rounded-full border transition-colors",
+                activeTagIds.has(t.id)
+                  ? tagColorClass(t.color) + " border-transparent"
+                  : "border-border text-muted-foreground hover:bg-muted",
+              )}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row gap-2 mb-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -97,7 +138,7 @@ export function ClientList({ clients }: { clients: ClientListItem[] }) {
 
       {filtered.length === 0 ? (
         <div className="text-center py-12 rounded-[var(--radius-lg)] border border-dashed border-border bg-card text-muted-foreground">
-          ไม่พบลูกเทรนที่ตรงกับ &ldquo;{query}&rdquo;
+          {query ? <>ไม่พบลูกเทรนที่ตรงกับ &ldquo;{query}&rdquo;</> : "ไม่พบลูกเทรนตามเงื่อนไขที่เลือก"}
         </div>
       ) : (
         <div className="grid gap-2.5 sm:gap-3 sm:grid-cols-2">
@@ -141,6 +182,24 @@ export function ClientList({ clients }: { clients: ClientListItem[] }) {
                 )}
                 <ChevronRight className="size-4 sm:size-5 shrink-0 text-muted-foreground group-hover:text-primary" />
               </div>
+
+              {c.tagIds.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1 pl-[48px] sm:pl-[56px]">
+                  {allTags
+                    .filter((t) => c.tagIds.includes(t.id))
+                    .map((t) => (
+                      <span
+                        key={t.id}
+                        className={cn(
+                          "text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full",
+                          tagColorClass(t.color),
+                        )}
+                      >
+                        {t.name}
+                      </span>
+                    ))}
+                </div>
+              )}
 
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-[48px] sm:pl-[56px] text-[11px] sm:text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1">

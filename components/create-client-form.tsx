@@ -66,6 +66,24 @@ export function CreateClientForm() {
             required
           />
         </div>
+
+        <div className="sm:col-span-3 pt-1 border-t border-border" />
+        <p className="sm:col-span-3 text-xs text-muted-foreground -mb-1">
+          ข้อมูลร่างกายตอนเริ่มต้น (ไม่บังคับ — กรอกทีหลังในหน้าโปรไฟล์ลูกเทรนก็ได้)
+        </p>
+        <div>
+          <Label htmlFor="c-startHeight">ส่วนสูง (ซม.)</Label>
+          <Input id="c-startHeight" name="startHeight" type="number" step="0.1" placeholder="170" />
+        </div>
+        <div>
+          <Label htmlFor="c-startWeight">น้ำหนัก (กก.)</Label>
+          <Input id="c-startWeight" name="startWeight" type="number" step="0.1" placeholder="65" />
+        </div>
+        <div>
+          <Label htmlFor="c-birthDate">วันเกิด</Label>
+          <Input id="c-birthDate" name="birthDate" type="date" />
+        </div>
+
         <div className="sm:col-span-3 flex flex-col sm:flex-row gap-2">
           <Button type="submit" disabled={pending} className="w-full sm:w-auto">
             {pending ? "กำลังสร้าง..." : "สร้างบัญชี"}

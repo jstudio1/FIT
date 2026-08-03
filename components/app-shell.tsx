@@ -20,6 +20,7 @@ import {
   LogOut,
   Menu,
   X,
+  Calculator,
   type LucideIcon,
 } from "lucide-react";
 import { logoutAction } from "@/app/_actions/auth";
@@ -45,6 +46,7 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/trainer/schedule", label: "ตารางเทรน", icon: CalendarDays },
     { href: "/trainer/reports", label: "รายงาน", icon: ClipboardList },
     { href: "/trainer/food-review", label: "ตรวจอาหาร", icon: UtensilsCrossed },
+    { href: "/trainer/calculator", label: "คำนวณ BMI/TDEE", icon: Calculator },
     { href: "/trainer/profile", label: "โปรไฟล์", icon: UserCircle },
   ],
   CLIENT: [
@@ -52,6 +54,7 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/client/schedule", label: "จองเวลาเทรน", icon: CalendarDays },
     { href: "/client/results", label: "ผลลัพธ์", icon: LineChart },
     { href: "/client/food", label: "ส่งอาหาร", icon: Camera },
+    { href: "/client/calculator", label: "คำนวณ BMI/TDEE", icon: Calculator },
     { href: "/client/profile", label: "โปรไฟล์", icon: UserCircle },
     { href: "/client/privacy", label: "ความเป็นส่วนตัว", icon: ShieldCheck },
   ],

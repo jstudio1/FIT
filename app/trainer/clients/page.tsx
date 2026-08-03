@@ -8,6 +8,8 @@ import {
   foodLogs,
   foodComments,
   clientProfiles,
+  clientTags,
+  clientTagLinks,
 } from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
 import { toDateStr, hourLabel } from "@/lib/schedule";
@@ -16,6 +18,7 @@ import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { CreateClientForm } from "@/components/create-client-form";
 import { ClientList, type ClientListItem } from "@/components/client-list";
+import { ManageTagsPanel } from "@/components/manage-tags-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +92,30 @@ export default async function TrainerClientsPage() {
     : [];
   const profileByClientId = new Map(profileRows.map((p) => [p.userId, p]));
 
+  // แท็ก/กลุ่มลูกเทรนที่เทรนเนอร์สร้างเอง
+  const allTags = await db
+    .select()
+    .from(clientTags)
+    .where(eq(clientTags.trainerId, trainer.id))
+    .orderBy(clientTags.createdAt);
+  const tagLinks = clients.length
+    ? await db
+        .select()
+        .from(clientTagLinks)
+        .where(
+          inArray(
+            clientTagLinks.clientId,
+            clients.map((c) => c.id),
+          ),
+        )
+    : [];
+  const tagIdsByClient = new Map<number, number[]>();
+  for (const link of tagLinks) {
+    const arr = tagIdsByClient.get(link.clientId) ?? [];
+    arr.push(link.tagId);
+    tagIdsByClient.set(link.clientId, arr);
+  }
+
   const now = new Date();
   const items: ClientListItem[] = clients.map((c) => {
     const lastDate = lastTrainedMap.get(c.id);
@@ -126,6 +153,7 @@ export default async function TrainerClientsPage() {
       pendingFoodCount: pendingFoodMap.get(c.id) ?? 0,
       profileStepsDone,
       profileStepsTotal: steps.length,
+      tagIds: tagIdsByClient.get(c.id) ?? [],
     };
   });
   // ล่าสุดขึ้นก่อน (ค่า default ตอนโหลดหน้า)
@@ -160,7 +188,10 @@ export default async function TrainerClientsPage() {
         </div>
       </div>
 
-      <CreateClientForm />
+      <div className="flex flex-wrap gap-2 mb-6">
+        <CreateClientForm />
+        <ManageTagsPanel allTags={allTags} />
+      </div>
 
       {clients.length === 0 ? (
         <div className="text-center py-12 sm:py-16 rounded-[var(--radius-lg)] border border-dashed border-border bg-card px-4">
@@ -170,7 +201,7 @@ export default async function TrainerClientsPage() {
           </p>
         </div>
       ) : (
-        <ClientList clients={items} />
+        <ClientList clients={items} allTags={allTags} />
       )}
     </>
   );

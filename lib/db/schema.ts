@@ -44,6 +44,7 @@ export const clientProfiles = mysqlTable("client_profiles", {
     .references(() => users.id),
   goals: text("goals"),
   healthHistory: text("health_history"),
+  birthDate: date("birth_date", { mode: "string" }),
   // ข้อมูลร่างกายตอนเริ่มต้น
   startWeight: double("start_weight"),
   startHeight: double("start_height"),
@@ -65,6 +66,34 @@ export const clientProfiles = mysqlTable("client_profiles", {
   targetFat: int("target_fat"), // กรัม
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
+
+/* ---------------- Client tags (เทรนเนอร์จัดกลุ่มลูกเทรนเอง เช่น "ลดน้ำหนัก") ---------------- */
+export const clientTags = mysqlTable(
+  "client_tags",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    trainerId: int("trainer_id")
+      .notNull()
+      .references(() => users.id),
+    name: varchar("name", { length: 40 }).notNull(),
+    color: varchar("color", { length: 20 }).notNull().default("teal"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique("uniq_trainer_tag_name").on(t.trainerId, t.name)],
+);
+
+export const clientTagLinks = mysqlTable(
+  "client_tag_links",
+  {
+    tagId: int("tag_id")
+      .notNull()
+      .references(() => clientTags.id),
+    clientId: int("client_id")
+      .notNull()
+      .references(() => users.id),
+  },
+  (t) => [primaryKey({ columns: [t.tagId, t.clientId] })],
+);
 
 /* ---------------- Trainer settings (เปิด/ปิดรับจอง) ---------------- */
 export const trainerSettings = mysqlTable("trainer_settings", {

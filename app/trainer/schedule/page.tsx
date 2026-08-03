@@ -1,5 +1,18 @@
-import { addDays } from "date-fns";
+import Link from "next/link";
+import {
+  addDays,
+  addMonths,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  format,
+  isSameMonth,
+  isSameDay,
+} from "date-fns";
 import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
+import { CalendarDays, CalendarRange } from "lucide-react";
 import { db } from "@/lib/db";
 import {
   bookings,
@@ -16,25 +29,29 @@ import {
   toDateStr,
   isPastSlot,
   groupConsecutiveHours,
+  slotRangeLabel,
   OPEN_HOUR,
   CLOSE_HOUR,
 } from "@/lib/schedule";
+import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { TrainerCalendar, type TSlot } from "@/components/trainer-calendar";
 import {
   TrainerScheduleSettings,
   type BlockedDayGroup,
 } from "@/components/trainer-schedule-settings";
+import { TrainerMonthCalendar, type MonthDay } from "@/components/trainer-month-calendar";
 
 export const dynamic = "force-dynamic";
 
 export default async function TrainerSchedulePage({
   searchParams,
 }: {
-  searchParams: Promise<{ week?: string }>;
+  searchParams: Promise<{ week?: string; view?: string; month?: string }>;
 }) {
   const trainer = await requireRole("TRAINER");
   const sp = await searchParams;
+  const view = sp.view === "month" ? "month" : "week";
 
   const base =
     sp.week && /^\d{4}-\d{2}-\d{2}$/.test(sp.week)
@@ -141,6 +158,64 @@ export default async function TrainerSchedulePage({
     }
   }
 
+  // ปฏิทินรายเดือน (โหลดเฉพาะตอนดูมุมมองนี้)
+  const monthBase =
+    sp.month && /^\d{4}-\d{2}$/.test(sp.month)
+      ? new Date(`${sp.month}-01T00:00:00`)
+      : new Date();
+  const monthStart = startOfMonth(monthBase);
+  const monthEnd = endOfMonth(monthBase);
+  const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  const monthGridDays = eachDayOfInterval({ start: gridStart, end: gridEnd });
+  const monthLabel = format(monthBase, "MMMM yyyy");
+  const prevMonth = format(addMonths(monthStart, -1), "yyyy-MM");
+  const nextMonth = format(addMonths(monthStart, 1), "yyyy-MM");
+
+  let monthDays: MonthDay[] = [];
+  if (view === "month") {
+    const monthRangeStart = toDateStr(gridStart);
+    const monthRangeEnd = toDateStr(gridEnd);
+    const monthBks = await db
+      .select({
+        date: bookings.date,
+        hour: bookings.hour,
+        status: bookings.status,
+        clientName: users.fullName,
+      })
+      .from(bookings)
+      .innerJoin(users, eq(users.id, bookings.clientId))
+      .where(
+        and(
+          eq(bookings.trainerId, trainer.id),
+          gte(bookings.date, monthRangeStart),
+          lte(bookings.date, monthRangeEnd),
+        ),
+      );
+    const byDate = new Map<string, typeof monthBks>();
+    for (const b of monthBks) {
+      const arr = byDate.get(b.date) ?? [];
+      arr.push(b);
+      byDate.set(b.date, arr);
+    }
+    monthDays = monthGridDays.map((d) => {
+      const dateStr = toDateStr(d);
+      const dayBookings = byDate.get(dateStr) ?? [];
+      return {
+        dateStr,
+        dayNum: d.getDate(),
+        inCurrentMonth: isSameMonth(d, monthBase),
+        isToday: isSameDay(d, now),
+        bookings: dayBookings.map((b) => ({
+          hour: b.hour,
+          timeLabel: slotRangeLabel(b.hour),
+          clientName: b.clientName,
+          status: b.status,
+        })),
+      };
+    });
+  }
+
   return (
     <>
       <PageHeader
@@ -148,26 +223,64 @@ export default async function TrainerSchedulePage({
         description="ดูผู้จอง ปิด/เปิดช่วงเวลา และจัดการการรับจอง"
       />
 
-      <TrainerScheduleSettings
-        openHour={openHour}
-        closeHour={closeHour}
-        blockedDays={blockedDays}
-        recurringRanges={recurringRanges}
-      />
+      <div className="flex gap-2 mb-5">
+        <Link
+          href="/trainer/schedule?view=week"
+          className={cn(
+            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border transition-colors",
+            view === "week"
+              ? "bg-primary text-primary-foreground border-transparent"
+              : "border-border text-muted-foreground hover:bg-muted",
+          )}
+        >
+          <CalendarRange className="size-4" />
+          รายสัปดาห์
+        </Link>
+        <Link
+          href={`/trainer/schedule?view=month&month=${format(monthBase, "yyyy-MM")}`}
+          className={cn(
+            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border transition-colors",
+            view === "month"
+              ? "bg-primary text-primary-foreground border-transparent"
+              : "border-border text-muted-foreground hover:bg-muted",
+          )}
+        >
+          <CalendarDays className="size-4" />
+          รายเดือน
+        </Link>
+      </div>
 
-      <TrainerCalendar
-        days={days.map((d) => ({
-          dateStr: d.dateStr,
-          dayShort: d.dayShort,
-          dayNum: d.dayNum,
-        }))}
-        hours={hours}
-        slots={slots}
-        bookingOpen={bookingOpen}
-        prevWeek={prevWeek}
-        nextWeek={nextWeek}
-        rangeLabel={rangeLabel}
-      />
+      {view === "month" ? (
+        <TrainerMonthCalendar
+          days={monthDays}
+          monthLabel={monthLabel}
+          prevMonth={prevMonth}
+          nextMonth={nextMonth}
+        />
+      ) : (
+        <>
+          <TrainerScheduleSettings
+            openHour={openHour}
+            closeHour={closeHour}
+            blockedDays={blockedDays}
+            recurringRanges={recurringRanges}
+          />
+
+          <TrainerCalendar
+            days={days.map((d) => ({
+              dateStr: d.dateStr,
+              dayShort: d.dayShort,
+              dayNum: d.dayNum,
+            }))}
+            hours={hours}
+            slots={slots}
+            bookingOpen={bookingOpen}
+            prevWeek={prevWeek}
+            nextWeek={nextWeek}
+            rangeLabel={rangeLabel}
+          />
+        </>
+      )}
     </>
   );
 }

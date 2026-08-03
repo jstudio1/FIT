@@ -1,0 +1,287 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { Calculator, UserSearch } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type Gender = "MALE" | "FEMALE";
+type Goal = "cut" | "maintain" | "bulk";
+
+export type CalculatorClientOption = {
+  id: number;
+  name: string;
+  height: number | null;
+  weight: number | null;
+  age: number | null;
+};
+
+const GOAL_LABEL: Record<Goal, string> = {
+  cut: "ลดไขมัน",
+  maintain: "คงที่",
+  bulk: "เพิ่มกล้าม",
+};
+
+// สัดส่วนแมคโคร (% ของแคลอรี่รวม) ต่อเป้าหมาย — โปรตีนสูงตอนลดไขมันเพื่อรักษามวลกล้ามเนื้อ
+const MACRO_SPLIT: Record<Goal, { protein: number; carb: number; fat: number }> = {
+  cut: { protein: 0.4, carb: 0.3, fat: 0.3 },
+  maintain: { protein: 0.3, carb: 0.4, fat: 0.3 },
+  bulk: { protein: 0.3, carb: 0.45, fat: 0.25 },
+};
+
+const ACTIVITY_LEVELS = [
+  { value: "1.2", label: "แทบไม่ออกกำลังกาย (นั่งทำงานทั้งวัน)" },
+  { value: "1.375", label: "ออกกำลังกายเบาๆ 1-3 วัน/สัปดาห์" },
+  { value: "1.55", label: "ออกกำลังกายปานกลาง 3-5 วัน/สัปดาห์" },
+  { value: "1.725", label: "ออกกำลังกายหนัก 6-7 วัน/สัปดาห์" },
+  { value: "1.9", label: "ออกกำลังกายหนักมาก / ใช้แรงงานหนัก" },
+];
+
+function bmiCategory(bmi: number): { label: string; color: string } {
+  if (bmi < 18.5) return { label: "น้ำหนักน้อย", color: "text-blue-600" };
+  if (bmi < 23) return { label: "ปกติ", color: "text-primary" };
+  if (bmi < 25) return { label: "ท้วม / เริ่มอ้วน", color: "text-amber-600" };
+  if (bmi < 30) return { label: "อ้วน", color: "text-orange-600" };
+  return { label: "อ้วนมาก", color: "text-destructive" };
+}
+
+export function BmiTdeeCalculator({
+  clients,
+}: {
+  clients?: CalculatorClientOption[];
+}) {
+  const [gender, setGender] = useState<Gender>("MALE");
+  const [age, setAge] = useState("");
+  const [height, setHeight] = useState("");
+  const [weight, setWeight] = useState("");
+  const [activity, setActivity] = useState(ACTIVITY_LEVELS[2].value);
+  const [goal, setGoal] = useState<Goal>("maintain");
+  const [selectedClientId, setSelectedClientId] = useState("");
+
+  const applyClient = (clientId: string) => {
+    setSelectedClientId(clientId);
+    const client = clients?.find((c) => String(c.id) === clientId);
+    if (!client) return;
+    if (client.height != null) setHeight(String(client.height));
+    if (client.weight != null) setWeight(String(client.weight));
+    if (client.age != null) setAge(String(client.age));
+  };
+
+  const result = useMemo(() => {
+    const a = Number(age);
+    const h = Number(height);
+    const w = Number(weight);
+    if (!a || !h || !w || a <= 0 || h <= 0 || w <= 0) return null;
+
+    const bmi = w / (h / 100) ** 2;
+    const bmr =
+      gender === "MALE"
+        ? 10 * w + 6.25 * h - 5 * a + 5
+        : 10 * w + 6.25 * h - 5 * a - 161;
+    const tdee = bmr * Number(activity);
+
+    return {
+      bmi,
+      bmr: Math.round(bmr),
+      tdee: Math.round(tdee),
+      cut: Math.round(tdee - 500),
+      bulk: Math.round(tdee + 500),
+    };
+  }, [age, height, weight, gender, activity]);
+
+  const calorieByGoal: Record<Goal, number> | null = result
+    ? { cut: result.cut, maintain: result.tdee, bulk: result.bulk }
+    : null;
+
+  const macros = useMemo(() => {
+    if (!calorieByGoal) return null;
+    const calories = calorieByGoal[goal];
+    const split = MACRO_SPLIT[goal];
+    return {
+      calories,
+      protein: Math.round((calories * split.protein) / 4),
+      carb: Math.round((calories * split.carb) / 4),
+      fat: Math.round((calories * split.fat) / 9),
+    };
+  }, [calorieByGoal, goal]);
+
+  return (
+    <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4 sm:p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <Calculator className="size-5 text-primary" />
+        <h3 className="font-semibold">คำนวณ BMI / TDEE</h3>
+      </div>
+
+      {clients && clients.length > 0 && (
+        <label className="text-xs text-muted-foreground block mb-3">
+          <span className="inline-flex items-center gap-1.5">
+            <UserSearch className="size-3.5" />
+            ดึงข้อมูลจากลูกเทรน (ไม่บังคับ)
+          </span>
+          <select
+            value={selectedClientId}
+            onChange={(e) => applyClient(e.target.value)}
+            className="mt-1 h-10 w-full px-2.5 rounded-md border border-input bg-card text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+          >
+            <option value="">— เลือกลูกเทรน —</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <button
+          type="button"
+          onClick={() => setGender("MALE")}
+          className={cn(
+            "h-10 rounded-md border text-sm font-medium transition-colors",
+            gender === "MALE"
+              ? "bg-primary text-primary-foreground border-transparent"
+              : "border-border text-muted-foreground hover:bg-muted",
+          )}
+        >
+          ผู้ชาย
+        </button>
+        <button
+          type="button"
+          onClick={() => setGender("FEMALE")}
+          className={cn(
+            "h-10 rounded-md border text-sm font-medium transition-colors",
+            gender === "FEMALE"
+              ? "bg-primary text-primary-foreground border-transparent"
+              : "border-border text-muted-foreground hover:bg-muted",
+          )}
+        >
+          ผู้หญิง
+        </button>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3 mb-3">
+        <label className="text-xs text-muted-foreground">
+          อายุ (ปี)
+          <input
+            type="number"
+            inputMode="numeric"
+            value={age}
+            onChange={(e) => setAge(e.target.value)}
+            className="mt-1 h-10 w-full px-2.5 rounded-md border border-input bg-card text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+            placeholder="25"
+          />
+        </label>
+        <label className="text-xs text-muted-foreground">
+          ส่วนสูง (ซม.)
+          <input
+            type="number"
+            inputMode="numeric"
+            value={height}
+            onChange={(e) => setHeight(e.target.value)}
+            className="mt-1 h-10 w-full px-2.5 rounded-md border border-input bg-card text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+            placeholder="170"
+          />
+        </label>
+        <label className="text-xs text-muted-foreground">
+          น้ำหนัก (กก.)
+          <input
+            type="number"
+            inputMode="numeric"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            className="mt-1 h-10 w-full px-2.5 rounded-md border border-input bg-card text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+            placeholder="65"
+          />
+        </label>
+      </div>
+
+      <label className="text-xs text-muted-foreground block mb-4">
+        ระดับกิจกรรม
+        <select
+          value={activity}
+          onChange={(e) => setActivity(e.target.value)}
+          className="mt-1 h-10 w-full px-2.5 rounded-md border border-input bg-card text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+        >
+          {ACTIVITY_LEVELS.map((lvl) => (
+            <option key={lvl.value} value={lvl.value}>
+              {lvl.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {result ? (
+        <div className="space-y-3">
+          <div className="rounded-md bg-muted/50 p-3 flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">BMI</span>
+            <span className="text-sm font-semibold">
+              {result.bmi.toFixed(1)}{" "}
+              <span className={bmiCategory(result.bmi).color}>
+                ({bmiCategory(result.bmi).label})
+              </span>
+            </span>
+          </div>
+          <div className="rounded-md bg-muted/50 p-3 flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">BMR (แคลอรี่พื้นฐาน)</span>
+            <span className="text-sm font-semibold">{result.bmr.toLocaleString()} kcal</span>
+          </div>
+          <div className="rounded-md bg-primary/10 p-3 flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">TDEE (แคลอรี่ที่ใช้ต่อวัน)</span>
+            <span className="text-sm font-semibold text-primary">
+              {result.tdee.toLocaleString()} kcal
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 pt-1">
+            {(["cut", "maintain", "bulk"] as Goal[]).map((g) => (
+              <button
+                key={g}
+                type="button"
+                onClick={() => setGoal(g)}
+                className={cn(
+                  "rounded-md border p-2.5 text-center transition-colors",
+                  goal === g
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:bg-muted",
+                )}
+              >
+                <div className="text-[11px] text-muted-foreground mb-0.5">
+                  {GOAL_LABEL[g]}
+                </div>
+                <div className="text-sm font-semibold">
+                  {calorieByGoal![g].toLocaleString()}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {macros && (
+            <div className="pt-1">
+              <div className="text-xs text-muted-foreground mb-1.5">
+                สัดส่วนแมคโครสำหรับเป้าหมาย &ldquo;{GOAL_LABEL[goal]}&rdquo; ({macros.calories.toLocaleString()} kcal)
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-md bg-muted/50 p-2.5 text-center">
+                  <div className="text-[11px] text-muted-foreground mb-0.5">โปรตีน</div>
+                  <div className="text-sm font-semibold">{macros.protein} g</div>
+                </div>
+                <div className="rounded-md bg-muted/50 p-2.5 text-center">
+                  <div className="text-[11px] text-muted-foreground mb-0.5">คาร์บ</div>
+                  <div className="text-sm font-semibold">{macros.carb} g</div>
+                </div>
+                <div className="rounded-md bg-muted/50 p-2.5 text-center">
+                  <div className="text-[11px] text-muted-foreground mb-0.5">ไขมัน</div>
+                  <div className="text-sm font-semibold">{macros.fat} g</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground text-center py-4">
+          กรอกข้อมูลให้ครบเพื่อคำนวณ
+        </p>
+      )}
+    </div>
+  );
+}

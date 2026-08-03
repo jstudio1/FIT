@@ -19,6 +19,8 @@ import {
   sessionResults,
   foodLogs,
   foodComments,
+  clientTags,
+  clientTagLinks,
 } from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
 import {
@@ -48,6 +50,7 @@ import {
   type FoodLogCardComment,
 } from "@/components/food-log-card";
 import { FoodCommentForm } from "@/components/food-comment-form";
+import { ClientTagPicker } from "@/components/client-tag-picker";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +78,17 @@ export default async function ClientProfilePage({
     )
     .limit(1);
   if (!client) notFound();
+
+  const allTags = await db
+    .select()
+    .from(clientTags)
+    .where(eq(clientTags.trainerId, trainer.id))
+    .orderBy(clientTags.createdAt);
+  const assignedTagLinks = await db
+    .select({ tagId: clientTagLinks.tagId })
+    .from(clientTagLinks)
+    .where(eq(clientTagLinks.clientId, clientId));
+  const assignedTagIds = assignedTagLinks.map((l) => l.tagId);
 
   const [profile] = await db
     .select()
@@ -258,6 +272,14 @@ export default async function ClientProfilePage({
             )}
           </div>
         )}
+
+        <div className="mt-3">
+          <ClientTagPicker
+            clientId={client.id}
+            allTags={allTags}
+            assignedTagIds={assignedTagIds}
+          />
+        </div>
       </div>
 
       <div className="space-y-5">

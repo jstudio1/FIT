@@ -68,6 +68,10 @@ export function ProfileForm({
 
       <Section title="ข้อมูลร่างกายตอนเริ่มต้น">
         <div>
+          <Label htmlFor="birthDate">วันเกิด (สำหรับคำนวณอายุ)</Label>
+          <Input id="birthDate" name="birthDate" type="date" defaultValue={v(profile?.birthDate)} />
+        </div>
+        <div>
           <Label htmlFor="startWeight">น้ำหนัก (กก.)</Label>
           <Input id="startWeight" name="startWeight" type="number" step="0.1" defaultValue={v(profile?.startWeight)} />
         </div>

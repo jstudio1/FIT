@@ -21,6 +21,9 @@ const createClientSchema = z.object({
     .regex(/^[a-zA-Z0-9._-]+$/, "ใช้ได้เฉพาะ a-z, 0-9, . _ -"),
   password: z.string().min(12, "รหัสผ่านอย่างน้อย 12 ตัวอักษร").max(128),
   fullName: z.string().trim().min(1, "กรุณากรอกชื่อ-นามสกุล").max(128),
+  startHeight: z.number().positive().nullable(),
+  startWeight: z.number().positive().nullable(),
+  birthDate: z.string().nullable(),
 });
 
 export async function createClientAction(
@@ -33,9 +36,12 @@ export async function createClientAction(
     username: formData.get("username"),
     password: formData.get("password"),
     fullName: formData.get("fullName"),
+    startHeight: num(formData.get("startHeight")),
+    startWeight: num(formData.get("startWeight")),
+    birthDate: str(formData.get("birthDate")),
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { username, password, fullName } = parsed.data;
+  const { username, password, fullName, startHeight, startWeight, birthDate } = parsed.data;
 
   const dup = await db
     .select({ id: users.id })
@@ -50,7 +56,9 @@ export async function createClientAction(
       .insert(users)
       .values({ username, passwordHash, role: "CLIENT", fullName, trainerId: trainer.id })
       .$returningId();
-    await tx.insert(clientProfiles).values({ userId: inserted[0].id });
+    await tx
+      .insert(clientProfiles)
+      .values({ userId: inserted[0].id, startHeight, startWeight, birthDate });
   });
 
   revalidatePath("/trainer/clients");
@@ -96,6 +104,7 @@ export async function saveProfileAction(
   const data = {
     goals: str(formData.get("goals")),
     healthHistory: str(formData.get("healthHistory")),
+    birthDate: str(formData.get("birthDate")),
     startWeight: num(formData.get("startWeight")),
     startHeight: num(formData.get("startHeight")),
     startWaist: num(formData.get("startWaist")),
