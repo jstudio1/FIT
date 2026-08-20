@@ -15,11 +15,13 @@ export function PopupSettingsForm({
   popupTitle,
   popupLinkUrl,
   hasImage,
+  maxUploadSizeMb,
 }: {
   popupEnabled: boolean;
   popupTitle: string | null;
   popupLinkUrl: string | null;
   hasImage: boolean;
+  maxUploadSizeMb: number;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -127,7 +129,7 @@ export function PopupSettingsForm({
               className="hidden"
               onChange={(e) => onPick(e.target.files?.[0])}
             />
-            <p className="text-xs text-muted-foreground mt-1.5">JPG/PNG/WebP ไม่เกิน 8MB</p>
+            <p className="text-xs text-muted-foreground mt-1.5">JPG/PNG/WebP ไม่เกิน {maxUploadSizeMb}MB</p>
           </div>
         </div>
       </div>

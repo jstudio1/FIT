@@ -94,12 +94,17 @@ export default async function OwnerClientDetailPage({
     .where(eq(bookings.clientId, clientId))
     .orderBy(desc(bookings.date), desc(bookings.hour));
   const now = new Date();
+  const todayStr = toDateStr(now);
   const attendance: BookingRow[] = bkRows.map((b) => ({
     id: b.id,
     dateLabel: b.date,
     timeLabel: slotRangeLabel(b.hour),
     status: b.status,
     isPast: isPastSlot(b.date, b.hour, now),
+    isToday: b.date === todayStr,
+    sessionStartedAt: b.sessionStartedAt ? b.sessionStartedAt.toISOString() : null,
+    durationMinutes: b.durationMinutes,
+    durationNote: b.durationNote,
   }));
 
   // ผลลัพธ์

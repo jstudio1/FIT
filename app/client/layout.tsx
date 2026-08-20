@@ -10,6 +10,10 @@ export default async function ClientLayout({
 }) {
   const user = await requireRole("CLIENT");
   const settings = await getSiteSettings();
+  const hiddenHrefs = [
+    ...(settings.chatEnabled ? [] : ["/client/chat"]),
+    ...(settings.gamificationEnabled ? [] : ["/client/points"]),
+  ];
 
   return (
     <>
@@ -25,6 +29,7 @@ export default async function ClientLayout({
         name={user.fullName}
         userId={user.id}
         avatarPath={user.avatarPath}
+        hiddenHrefs={hiddenHrefs}
       >
         {children}
       </AppShell>

@@ -222,3 +222,104 @@ export async function savePopupSettingsAction(
   revalidatePath("/", "layout");
   return { success: "บันทึกการตั้งค่าป็อปอัพแล้ว" };
 }
+
+/* ---------------- เปิด/ปิดระบบแชท + แต้มสะสม, ตั้งค่าแต้ม ---------------- */
+export async function saveSystemTogglesAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireRole("OWNER");
+
+  const chatEnabled = formData.get("chatEnabled") === "on";
+  const gamificationEnabled = formData.get("gamificationEnabled") === "on";
+  const pointsTrainingCompleted = Number(formData.get("pointsTrainingCompleted"));
+  const pointsFoodLogged = Number(formData.get("pointsFoodLogged"));
+  const pointsBadgeBonus = Number(formData.get("pointsBadgeBonus"));
+
+  if (
+    !Number.isFinite(pointsTrainingCompleted) ||
+    !Number.isFinite(pointsFoodLogged) ||
+    !Number.isFinite(pointsBadgeBonus) ||
+    pointsTrainingCompleted < 0 ||
+    pointsFoodLogged < 0 ||
+    pointsBadgeBonus < 0
+  ) {
+    return { error: "ค่าแต้มต้องเป็นตัวเลขไม่ติดลบ" };
+  }
+
+  const data = {
+    chatEnabled,
+    gamificationEnabled,
+    pointsTrainingCompleted: Math.round(pointsTrainingCompleted),
+    pointsFoodLogged: Math.round(pointsFoodLogged),
+    pointsBadgeBonus: Math.round(pointsBadgeBonus),
+  };
+
+  const [existing] = await db
+    .select({ id: siteSettings.id })
+    .from(siteSettings)
+    .where(eq(siteSettings.id, 1))
+    .limit(1);
+
+  if (existing) {
+    await db.update(siteSettings).set(data).where(eq(siteSettings.id, 1));
+  } else {
+    await db.insert(siteSettings).values({ id: 1, ...data });
+  }
+
+  revalidatePath("/", "layout");
+  return { success: "บันทึกการตั้งค่าระบบแล้ว" };
+}
+
+/* ---------------- ค่าดำเนินงาน: การจอง/เทรน, แชท, ไฟล์อัปโหลด ---------------- */
+export async function saveOperationalSettingsAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireRole("OWNER");
+
+  const bookingCancelWindowHours = Number(formData.get("bookingCancelWindowHours"));
+  const sessionDurationMin = Number(formData.get("sessionDurationMin"));
+  const chatMaxMessageLength = Number(formData.get("chatMaxMessageLength"));
+  const chatDeleteWindowMin = Number(formData.get("chatDeleteWindowMin"));
+  const maxUploadSizeMb = Number(formData.get("maxUploadSizeMb"));
+
+  const fields = {
+    bookingCancelWindowHours,
+    sessionDurationMin,
+    chatMaxMessageLength,
+    chatDeleteWindowMin,
+    maxUploadSizeMb,
+  };
+  for (const v of Object.values(fields)) {
+    if (!Number.isFinite(v) || v <= 0) return { error: "ค่าที่กรอกต้องเป็นตัวเลขมากกว่า 0" };
+  }
+  if (bookingCancelWindowHours > 168) return { error: "ชั่วโมงยกเลิกนัดล่วงหน้าต้องไม่เกิน 168 (7 วัน)" };
+  if (sessionDurationMin > 480) return { error: "ความยาวคาบเทรนต้องไม่เกิน 480 นาที" };
+  if (chatMaxMessageLength > 10000) return { error: "ความยาวข้อความสูงสุดต้องไม่เกิน 10,000 ตัวอักษร" };
+  if (chatDeleteWindowMin > 1440) return { error: "เวลาลบข้อความต้องไม่เกิน 1,440 นาที (24 ชม.)" };
+  if (maxUploadSizeMb > 50) return { error: "ขนาดไฟล์อัปโหลดสูงสุดต้องไม่เกิน 50MB" };
+
+  const data = {
+    bookingCancelWindowHours: Math.round(bookingCancelWindowHours),
+    sessionDurationMin: Math.round(sessionDurationMin),
+    chatMaxMessageLength: Math.round(chatMaxMessageLength),
+    chatDeleteWindowMin: Math.round(chatDeleteWindowMin),
+    maxUploadSizeMb: Math.round(maxUploadSizeMb),
+  };
+
+  const [existing] = await db
+    .select({ id: siteSettings.id })
+    .from(siteSettings)
+    .where(eq(siteSettings.id, 1))
+    .limit(1);
+
+  if (existing) {
+    await db.update(siteSettings).set(data).where(eq(siteSettings.id, 1));
+  } else {
+    await db.insert(siteSettings).values({ id: 1, ...data });
+  }
+
+  revalidatePath("/", "layout");
+  return { success: "บันทึกค่าดำเนินงานแล้ว" };
+}

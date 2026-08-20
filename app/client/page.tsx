@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { format } from "date-fns";
 import { and, asc, desc, eq, gte } from "drizzle-orm";
-import { Target, CalendarDays, Camera, LineChart } from "lucide-react";
+import { Target, CalendarDays, Camera, LineChart, ChefHat, ArrowRight } from "lucide-react";
 import { db } from "@/lib/db";
 import { clientProfiles, sessionResults, bookings } from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
 import { toDateStr, hourLabel } from "@/lib/schedule";
 import { computeClientSteps } from "@/lib/profile-progress";
+import { getDailyMenu } from "@/lib/menu";
 import { PageHeader } from "@/components/page-header";
 import { ResultsChart, type ResultPoint } from "@/components/results-chart";
 import { ProfileProgress } from "@/components/profile-progress";
+import { MenuCard } from "@/components/menu-card";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +49,7 @@ export default async function ClientDashboardPage() {
   const latest = results[results.length - 1];
   const hasHealthProfile = Boolean(profile?.goals || profile?.healthHistory);
   const profileSteps = computeClientSteps(client, hasHealthProfile);
+  const dailyMenu = await getDailyMenu(5);
 
   const baseline = [
     { label: "น้ำหนักล่าสุด", value: latest?.weight ?? profile?.startWeight, unit: "กก." },
@@ -119,6 +122,39 @@ export default async function ClientDashboardPage() {
           </div>
         ))}
       </div>
+
+      {/* เมนูแนะนำวันนี้ */}
+      {dailyMenu.length > 0 && (
+        <div className="relative overflow-hidden rounded-[var(--radius-lg)] border border-border bg-card shadow-sm mb-4">
+          <div className="relative bg-gradient-to-br from-primary/15 via-primary/5 to-transparent px-5 pt-5 pb-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-sm">
+                  <ChefHat className="size-4.5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold leading-tight">เมนูแนะนำวันนี้</h3>
+                  <p className="text-xs text-muted-foreground">เลือกสรรมาให้แล้ว อัปเดตทุกวัน</p>
+                </div>
+              </div>
+              <Link
+                href="/client/menu"
+                className="inline-flex items-center gap-1 shrink-0 text-xs font-medium text-primary hover:gap-1.5 transition-all"
+              >
+                ดูทั้งหมด
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </div>
+          </div>
+          <div className="flex gap-3 overflow-x-auto px-5 pb-5 pt-1 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {dailyMenu.map((m, i) => (
+              <div key={m.id} className="w-36 sm:w-40 shrink-0 snap-start">
+                <MenuCard menu={m} compact index={i} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* กราฟ */}
       <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5 mb-4">

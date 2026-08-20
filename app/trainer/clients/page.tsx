@@ -144,6 +144,8 @@ export default async function TrainerClientsPage() {
       fullName: c.fullName,
       nickname: c.nickname,
       username: c.username,
+      phone: c.phone,
+      email: c.email,
       active: c.active,
       avatarPath: c.avatarPath,
       createdAt: c.createdAt.toISOString(),

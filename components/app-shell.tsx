@@ -21,6 +21,10 @@ import {
   Menu,
   X,
   Calculator,
+  Play,
+  MessageCircle,
+  Trophy,
+  ChefHat,
   type LucideIcon,
 } from "lucide-react";
 import { logoutAction } from "@/app/_actions/auth";
@@ -28,6 +32,8 @@ import { cn } from "@/lib/utils";
 import type { Role } from "@/lib/db/schema";
 import { NotificationBell } from "@/components/notification-bell";
 import { AppointmentReminder } from "@/components/appointment-reminder";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { ChatNavBadge } from "@/components/chat-nav-badge";
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
@@ -38,11 +44,15 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/owner/clients", label: "ลูกเทรนทั้งหมด", icon: UsersRound },
     { href: "/owner/reports", label: "รายงาน", icon: ClipboardList },
     { href: "/owner/broadcast", label: "ประกาศ", icon: Megaphone },
+    { href: "/owner/menu", label: "จัดการเมนูแนะนำ", icon: ChefHat },
+    { href: "/owner/chat", label: "ตรวจสอบแชท", icon: MessageCircle },
     { href: "/owner/settings", label: "ตั้งค่าเว็บไซต์", icon: Settings },
   ],
   TRAINER: [
     { href: "/trainer", label: "แดชบอร์ด", icon: LayoutDashboard },
+    { href: "/trainer/session", label: "เริ่ม Session", icon: Play },
     { href: "/trainer/clients", label: "ลูกเทรน", icon: Users },
+    { href: "/trainer/chat", label: "แชท", icon: MessageCircle },
     { href: "/trainer/schedule", label: "ตารางเทรน", icon: CalendarDays },
     { href: "/trainer/reports", label: "รายงาน", icon: ClipboardList },
     { href: "/trainer/food-review", label: "ตรวจอาหาร", icon: UtensilsCrossed },
@@ -51,9 +61,12 @@ const NAV: Record<Role, NavItem[]> = {
   ],
   CLIENT: [
     { href: "/client", label: "แดชบอร์ด", icon: LayoutDashboard },
+    { href: "/client/chat", label: "แชท", icon: MessageCircle },
+    { href: "/client/points", label: "แต้มสะสม", icon: Trophy },
     { href: "/client/schedule", label: "จองเวลาเทรน", icon: CalendarDays },
     { href: "/client/results", label: "ผลลัพธ์", icon: LineChart },
     { href: "/client/food", label: "ส่งอาหาร", icon: Camera },
+    { href: "/client/menu", label: "เมนูแนะนำ", icon: ChefHat },
     { href: "/client/calculator", label: "คำนวณ BMI/TDEE", icon: Calculator },
     { href: "/client/profile", label: "โปรไฟล์", icon: UserCircle },
     { href: "/client/privacy", label: "ความเป็นส่วนตัว", icon: ShieldCheck },
@@ -71,17 +84,20 @@ export function AppShell({
   name,
   userId,
   avatarPath,
+  hiddenHrefs,
   children,
 }: {
   role: Role;
   name: string;
   userId: number;
   avatarPath?: string | null;
+  /** ซ่อนเมนูบางอันตามการตั้งค่าของ owner (เช่น ปิดระบบแชท/แต้มสะสม) */
+  hiddenHrefs?: string[];
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const nav = NAV[role];
+  const nav = NAV[role].filter((item) => !hiddenHrefs?.includes(item.href));
 
   const isActive = (href: string) =>
     pathname === href || (href !== `/${role.toLowerCase()}` && pathname.startsWith(href + "/"));
@@ -125,6 +141,7 @@ export function AppShell({
               >
                 <Icon className="size-4.5" />
                 {item.label}
+                {item.href.endsWith("/chat") && <ChatNavBadge />}
               </Link>
             );
           })}
@@ -183,7 +200,10 @@ export function AppShell({
             </button>
             <span className="font-bold lg:hidden">Trainner</span>
           </div>
-          <NotificationBell />
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <NotificationBell />
+          </div>
         </header>
         <AppointmentReminder />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-6xl w-full mx-auto">

@@ -2,7 +2,8 @@ import { addDays, startOfWeek, format } from "date-fns";
 
 export const OPEN_HOUR = 8; // ค่าเริ่มต้น (ใช้เมื่อเทรนเนอร์ยังไม่ได้ตั้งค่า)
 export const CLOSE_HOUR = 20; // ค่าเริ่มต้น
-export const CANCEL_WINDOW_HOURS = 6;
+/** ค่าเริ่มต้น (ใช้เมื่อยังไม่ได้ตั้งค่า) — จริงๆ ปรับได้จากหน้าตั้งค่าเว็บไซต์ของเจ้าของระบบ (siteSettings.bookingCancelWindowHours) */
+export const DEFAULT_CANCEL_WINDOW_HOURS = 6;
 
 /** สร้างรายการชั่วโมงที่จองได้ [openHour..closeHour-1] ตามเวลาทำการของเทรนเนอร์ */
 export function getHoursRange(openHour: number, closeHour: number): number[] {
@@ -66,15 +67,16 @@ export function isPastSlot(
   return slotStart(dateStr, hour).getTime() <= now.getTime();
 }
 
-/** ยกเลิกได้เมื่อเหลือเวลา > 6 ชั่วโมงก่อนเริ่ม */
+/** ยกเลิกได้เมื่อเหลือเวลา > cancelWindowHours ก่อนเริ่ม (ค่านี้เจ้าของระบบปรับได้) */
 export function canCancelSlot(
   dateStr: string,
   hour: number,
   now: Date = new Date(),
+  cancelWindowHours: number = DEFAULT_CANCEL_WINDOW_HOURS,
 ): boolean {
   return (
     slotStart(dateStr, hour).getTime() - now.getTime() >
-    CANCEL_WINDOW_HOURS * 3600 * 1000
+    cancelWindowHours * 3600 * 1000
   );
 }
 

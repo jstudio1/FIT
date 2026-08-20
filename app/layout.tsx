@@ -25,8 +25,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th" className={`${notoThai.variable} h-full`}>
-      <body className="min-h-full">
+    <html lang="th" className={`${notoThai.variable} h-full`} suppressHydrationWarning>
+      <head>
+        {/* กันหน้าจอกะพริบ (แสงแล้ววาบเป็นมืด) — ต้องอ่าน localStorage แล้วติด class ก่อน paint แรก */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark')}}catch(e){}",
+          }}
+        />
+      </head>
+      <body className="min-h-full" suppressHydrationWarning>
         {children}
         <Toaster richColors position="top-center" />
       </body>

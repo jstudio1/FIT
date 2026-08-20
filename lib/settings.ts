@@ -12,6 +12,16 @@ export const DEFAULT_SETTINGS: Omit<SiteSettings, "id" | "updatedAt"> = {
   popupImagePath: null,
   popupTitle: null,
   popupLinkUrl: null,
+  chatEnabled: true,
+  gamificationEnabled: true,
+  pointsTrainingCompleted: 10,
+  pointsFoodLogged: 2,
+  pointsBadgeBonus: 20,
+  bookingCancelWindowHours: 6,
+  sessionDurationMin: 60,
+  chatMaxMessageLength: 2000,
+  chatDeleteWindowMin: 5,
+  maxUploadSizeMb: 10,
 };
 
 export async function getSiteSettings(): Promise<
@@ -34,6 +44,16 @@ export async function getSiteSettings(): Promise<
       popupImagePath: row.popupImagePath,
       popupTitle: row.popupTitle,
       popupLinkUrl: row.popupLinkUrl,
+      chatEnabled: row.chatEnabled,
+      gamificationEnabled: row.gamificationEnabled,
+      pointsTrainingCompleted: row.pointsTrainingCompleted,
+      pointsFoodLogged: row.pointsFoodLogged,
+      pointsBadgeBonus: row.pointsBadgeBonus,
+      bookingCancelWindowHours: row.bookingCancelWindowHours ?? DEFAULT_SETTINGS.bookingCancelWindowHours,
+      sessionDurationMin: row.sessionDurationMin ?? DEFAULT_SETTINGS.sessionDurationMin,
+      chatMaxMessageLength: row.chatMaxMessageLength ?? DEFAULT_SETTINGS.chatMaxMessageLength,
+      chatDeleteWindowMin: row.chatDeleteWindowMin ?? DEFAULT_SETTINGS.chatDeleteWindowMin,
+      maxUploadSizeMb: row.maxUploadSizeMb ?? DEFAULT_SETTINGS.maxUploadSizeMb,
     };
   } catch {
     return DEFAULT_SETTINGS;

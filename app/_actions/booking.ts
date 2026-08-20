@@ -14,6 +14,7 @@ import {
   slotLocks,
 } from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
+import { getSiteSettings } from "@/lib/settings";
 import {
   isValidSlot,
   isPastSlot,
@@ -127,8 +128,9 @@ export async function cancelBookingAction(bookingId: number): Promise<Res> {
     .where(and(eq(bookings.id, bookingId), eq(bookings.clientId, client.id)))
     .limit(1);
   if (!b) return { error: "ไม่พบการจอง" };
-  if (!canCancelSlot(b.date, b.hour))
-    return { error: "ยกเลิกได้เฉพาะก่อนเวลาเทรนอย่างน้อย 6 ชั่วโมง" };
+  const { bookingCancelWindowHours } = await getSiteSettings();
+  if (!canCancelSlot(b.date, b.hour, new Date(), bookingCancelWindowHours))
+    return { error: `ยกเลิกได้เฉพาะก่อนเวลาเทรนอย่างน้อย ${bookingCancelWindowHours} ชั่วโมง` };
 
   await db.transaction(async (tx) => {
     await tx.insert(bookingCancellations).values({ trainerId: b.trainerId, clientId: b.clientId, date: b.date, hour: b.hour, cancelledBy: "CLIENT" });

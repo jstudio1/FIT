@@ -49,3 +49,9 @@ next-env.d.ts
 # backup archives
 *.zip
 *.rar
+
+# local Claude Code session config (not meant for the repo)
+/.claude/
+
+# raw DB dump used only for local dev seeding — contains real user data, never commit
+wexplusc_fitpro.sql

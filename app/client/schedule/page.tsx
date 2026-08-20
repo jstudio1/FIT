@@ -8,6 +8,7 @@ import {
   trainerSettings,
 } from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
+import { getSiteSettings } from "@/lib/settings";
 import {
   getHoursRange,
   getWeekDays,
@@ -44,6 +45,7 @@ export default async function ClientSchedulePage({
 
   const trainerId = client.trainerId;
   const now = new Date();
+  const { bookingCancelWindowHours } = await getSiteSettings();
 
   const bookedMap = new Map<string, { clientId: number; bookingId: number }>();
   const blockedSet = new Set<string>();
@@ -118,7 +120,7 @@ export default async function ClientSchedulePage({
           slot = {
             status: "MINE",
             bookingId: b.bookingId,
-            canCancel: canCancelSlot(d.dateStr, h, now),
+            canCancel: canCancelSlot(d.dateStr, h, now, bookingCancelWindowHours),
           };
         } else {
           slot = { status: "TAKEN" };

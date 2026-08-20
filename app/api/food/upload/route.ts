@@ -3,14 +3,15 @@ import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { foodLogs, notifications, trainerSettings } from "@/lib/db/schema";
 import { getSessionUser } from "@/lib/auth";
+import { getSiteSettings } from "@/lib/settings";
 import { deleteFoodImage, saveFoodImage } from "@/lib/upload";
 import { writeAudit } from "@/lib/audit";
 import { hasCurrentPrivacyConsent } from "@/lib/privacy";
 import { estimateNutrition } from "@/lib/nutrition-ai";
+import { onFoodLogged } from "@/lib/gamification";
 
 const MEALS = ["BREAKFAST", "LUNCH", "DINNER", "SNACK"] as const;
 type Meal = (typeof MEALS)[number];
-const MAX_BYTES = 12 * 1024 * 1024; // 12MB
 
 export async function POST(req: NextRequest) {
   const user = await getSessionUser();
@@ -20,6 +21,7 @@ export async function POST(req: NextRequest) {
   if (!(await hasCurrentPrivacyConsent(user.id))) {
     return NextResponse.json({ error: "กรุณายอมรับนโยบายความเป็นส่วนตัวก่อนส่งรูปอาหาร" }, { status: 403 });
   }
+  const { maxUploadSizeMb } = await getSiteSettings();
 
   const form = await req.formData();
   const file = form.get("image");
@@ -32,8 +34,8 @@ export async function POST(req: NextRequest) {
   if (!file.type.startsWith("image/")) {
     return NextResponse.json({ error: "ต้องเป็นไฟล์รูปภาพ" }, { status: 400 });
   }
-  if (file.size > MAX_BYTES) {
-    return NextResponse.json({ error: "รูปใหญ่เกิน 12MB" }, { status: 400 });
+  if (file.size > maxUploadSizeMb * 1024 * 1024) {
+    return NextResponse.json({ error: `รูปใหญ่เกิน ${maxUploadSizeMb}MB` }, { status: 400 });
   }
   if (note && note.length > 2000) {
     return NextResponse.json({ error: "หมายเหตุยาวเกิน 2,000 ตัวอักษร" }, { status: 400 });
@@ -70,6 +72,7 @@ export async function POST(req: NextRequest) {
   }
 
   await writeAudit({ actorId: user.id, action: "FOOD_IMAGE_UPLOADED", resourceType: "FOOD_LOG", subjectUserId: user.id });
+  await onFoodLogged(user.id, foodLogId);
 
   // ตรวจอาหารอัตโนมัติด้วย AI ถ้าเทรนเนอร์เปิดโหมด auto ไว้ — อ่านค่า toggle ครั้งเดียว ณ จุดนี้
   // (ถ้าเทรนเนอร์ปิด auto ระหว่างที่คำขอนี้กำลังคำนวณอยู่พอดี งานนี้จะคำนวณจนเสร็จตามปกติ)

@@ -40,6 +40,25 @@
   --destructive-foreground: #ffffff;
 }
 
+/* โหมดกลางคืน — โทนดำแดง (สลับด้วยปุ่มในแอป ไม่ผูกกับธีมของเครื่อง) */
+.dark {
+  --background: #0b0707;
+  --foreground: #f3e6e5;
+  --card: #170f0f;
+  --card-foreground: #f3e6e5;
+  --primary: #e11d2e;
+  --primary-foreground: #ffffff;
+  --muted: #251515;
+  --muted-foreground: #b08a89;
+  --border: #34191b;
+  --input: #2a1517;
+  --ring: #e11d2e;
+  --accent: #2b1012;
+  --accent-foreground: #fca5a5;
+  --destructive: #f59e0b;
+  --destructive-foreground: #1a0d02;
+}
+
 * {
   border-color: var(--border);
 }
@@ -49,4 +68,20 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* การ์ดเมนูอาหาร — ไล่เข้าทีละใบตอนโหลดหน้า */
+@keyframes menu-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-menu-in {
+  animation: menu-card-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }

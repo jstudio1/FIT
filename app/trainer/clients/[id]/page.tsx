@@ -51,6 +51,8 @@ import {
 } from "@/components/food-log-card";
 import { FoodCommentForm } from "@/components/food-comment-form";
 import { ClientTagPicker } from "@/components/client-tag-picker";
+import { PointsSummaryCard } from "@/components/points-summary-card";
+import { getGamificationProfile } from "@/lib/gamification";
 
 export const dynamic = "force-dynamic";
 
@@ -105,13 +107,21 @@ export default async function ClientProfilePage({
     )
     .orderBy(desc(bookings.date), desc(bookings.hour));
   const now = new Date();
+  const todayStr = toDateStr(now);
   const attendance: BookingRow[] = bkRows.map((b) => ({
     id: b.id,
     dateLabel: b.date,
     timeLabel: slotRangeLabel(b.hour),
     status: b.status,
     isPast: isPastSlot(b.date, b.hour, now),
+    isToday: b.date === todayStr,
+    sessionStartedAt: b.sessionStartedAt ? b.sessionStartedAt.toISOString() : null,
+    durationMinutes: b.durationMinutes,
+    durationNote: b.durationNote,
   }));
+
+  const gamification = await getGamificationProfile(clientId);
+  const earnedBadges = gamification.badges.filter((b) => b.earnedAt);
 
   // ผลลัพธ์
   const results = await db
@@ -366,6 +376,13 @@ export default async function ClientProfilePage({
             </div>
           </div>
         </div>
+
+        {/* แต้มสะสม & Badge */}
+        <PointsSummaryCard
+          totalPoints={gamification.totalPoints}
+          currentStreak={gamification.currentStreak}
+          earnedBadges={earnedBadges}
+        />
 
         {/* การมาเทรน */}
         <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm overflow-hidden">

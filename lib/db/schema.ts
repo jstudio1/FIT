@@ -11,6 +11,7 @@ import {
   unique,
   index,
   primaryKey,
+  json,
   type AnyMySqlColumn,
 } from "drizzle-orm/mysql-core";
 import { relations } from "drizzle-orm";
@@ -124,6 +125,12 @@ export const bookings = mysqlTable(
       .notNull()
       .default("BOOKED"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
+    // จับเวลาเทรนจริง — เทรนเนอร์กดเริ่ม/จบ ตอนถึงเวลานัด
+    sessionStartedAt: timestamp("session_started_at"),
+    sessionEndedAt: timestamp("session_ended_at"),
+    durationMinutes: int("duration_minutes"), // เวลาที่ใช้จริง (นาที)
+    // เหตุผล — บังคับกรอกถ้าเวลาที่ใช้จริงไม่ตรง 1 ชั่วโมงตามกำหนด
+    durationNote: text("duration_note"),
   },
   (t) => [unique("uniq_slot").on(t.trainerId, t.date, t.hour)], // กันจองซ้อน
 );
@@ -200,6 +207,103 @@ export const sessionResults = mysqlTable("session_results", {
   measuredAt: timestamp("measured_at").notNull().defaultNow(),
 });
 
+/* ---------------- Calculator results (ผลคำนวณ BMI/TDEE/แมคโครที่บันทึกไว้) ---------------- */
+export const calculatorResults = mysqlTable(
+  "calculator_results",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    createdBy: int("created_by")
+      .notNull()
+      .references(() => users.id),
+    // ลูกเทรนที่ผลนี้เกี่ยวข้องด้วย (เทรนเนอร์เลือกจาก dropdown, ลูกเทรนคือตัวเอง) — ไม่บังคับ
+    clientId: int("client_id").references(() => users.id),
+    gender: mysqlEnum("gender", ["MALE", "FEMALE"]).notNull(),
+    age: int("age").notNull(),
+    height: double("height").notNull(),
+    weight: double("weight").notNull(),
+    activity: double("activity").notNull(),
+    goal: mysqlEnum("goal", ["cut", "maintain", "bulk"]).notNull(),
+    bmi: double("bmi").notNull(),
+    bmr: int("bmr").notNull(),
+    tdee: int("tdee").notNull(),
+    calories: int("calories").notNull(),
+    protein: int("protein").notNull(),
+    carb: int("carb").notNull(),
+    fat: int("fat").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("idx_calc_results_created_by").on(t.createdBy, t.createdAt)],
+);
+
+/* ---------------- Chat (แชทระหว่างเทรนเนอร์-ลูกเทรน คนละคู่ต่อ 1 บทสนทนา) ---------------- */
+export const chatMessages = mysqlTable(
+  "chat_messages",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    trainerId: int("trainer_id")
+      .notNull()
+      .references(() => users.id),
+    clientId: int("client_id")
+      .notNull()
+      .references(() => users.id),
+    senderId: int("sender_id")
+      .notNull()
+      .references(() => users.id),
+    body: text("body"), // null ได้ถ้าเป็นข้อความรูปภาพล้วน
+    imagePath: varchar("image_path", { length: 255 }), // ไฟล์ในโฟลเดอร์ uploads/chat
+    // มีค่า = อีกฝ่ายเปิดอ่านแล้ว ณ เวลานั้น
+    readByTrainerAt: timestamp("read_by_trainer_at"),
+    readByClientAt: timestamp("read_by_client_at"),
+    deletedAt: timestamp("deleted_at"), // ลบเอง (ยังเก็บแถวไว้เพื่อไม่ให้ลำดับ id/เวลาสลับ)
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_chat_conversation").on(t.trainerId, t.clientId, t.createdAt),
+  ],
+);
+
+/* ---------------- Gamification (แต้มสะสม / Streak / Badge / Leaderboard) ---------------- */
+export const pointEvents = mysqlTable(
+  "point_events",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    clientId: int("client_id")
+      .notNull()
+      .references(() => users.id),
+    points: int("points").notNull(),
+    reason: varchar("reason", { length: 40 }).notNull(), // เช่น TRAINING_COMPLETED, FOOD_LOGGED, BADGE_BONUS
+    refId: int("ref_id"), // id ของ booking/food log ที่เกี่ยวข้อง (ถ้ามี)
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("idx_point_events_client").on(t.clientId, t.createdAt)],
+);
+
+export const clientStreaks = mysqlTable("client_streaks", {
+  clientId: int("client_id")
+    .primaryKey()
+    .references(() => users.id),
+  currentStreak: int("current_streak").notNull().default(0),
+  longestStreak: int("longest_streak").notNull().default(0),
+  // วันล่าสุด (yyyy-mm-dd) ที่มีกิจกรรมนับ streak — กันนับซ้ำถ้าทำหลายอย่างวันเดียวกัน
+  lastActiveDate: date("last_active_date", { mode: "string" }),
+  // ลูกเทรนเลือกเองว่าจะให้ชื่อ/แต้มไปโชว์ใน Leaderboard หรือไม่ (ปิดไว้เป็นค่าเริ่มต้น)
+  leaderboardOptIn: boolean("leaderboard_opt_in").notNull().default(false),
+  updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+});
+
+export const clientBadges = mysqlTable(
+  "client_badges",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    clientId: int("client_id")
+      .notNull()
+      .references(() => users.id),
+    code: varchar("code", { length: 40 }).notNull(), // อ้างอิงคีย์ badge ที่กำหนดไว้ในโค้ด (lib/gamification.ts)
+    earnedAt: timestamp("earned_at").notNull().defaultNow(),
+  },
+  (t) => [unique("uniq_client_badge").on(t.clientId, t.code)],
+);
+
 /* ---------------- Food logs (รูปอาหารที่ลูกค้าส่ง) ---------------- */
 export const foodLogs = mysqlTable("food_logs", {
   id: int("id").autoincrement().primaryKey(),
@@ -238,6 +342,29 @@ export const foodComments = mysqlTable("food_comments", {
   carbs: int("carbs"), // กรัม
   protein: int("protein"), // กรัม
   fat: int("fat"), // กรัม
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+/* ---------------- Menu items (คลังเมนูอาหารแนะนำ — คลีน/แคลน้อย พร้อมรูป) ---------------- */
+export const menuItems = mysqlTable("menu_items", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 191 }).notNull(),
+  description: text("description"),
+  // ส่วนประกอบหลัก (สูงสุด 6 รายการ — ใช้แสดงไดอะแกรมเส้นโยงในหน้ารายละเอียดเมนู)
+  ingredients: json("ingredients").$type<string[]>(),
+  imagePath: varchar("image_path", { length: 255 }), // ไฟล์ในโฟลเดอร์ uploads/menu (ดาวน์โหลดเก็บเองครั้งเดียวตอน seed)
+  imageCredit: varchar("image_credit", { length: 191 }), // เครดิตช่างภาพ ตามเงื่อนไขการใช้งานของ Pexels
+  calories: int("calories").notNull(),
+  protein: int("protein").notNull(), // กรัม
+  carb: int("carb").notNull(), // กรัม
+  fat: int("fat").notNull(), // กรัม
+  tagClean: boolean("tag_clean").notNull().default(false), // อาหารคลีน
+  tagLowCal: boolean("tag_low_cal").notNull().default(false), // อาหารทั่วไปแต่แคลน้อย
+  tagDessert: boolean("tag_dessert").notNull().default(false), // ขนม/ของหวานเพื่อสุขภาพ
+  mealType: mysqlEnum("meal_type", ["BREAKFAST", "LUNCH", "DINNER", "SNACK", "ANY"])
+    .notNull()
+    .default("ANY"),
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -329,6 +456,19 @@ export const siteSettings = mysqlTable("site_settings", {
   popupImagePath: varchar("popup_image_path", { length: 255 }),
   popupTitle: varchar("popup_title", { length: 191 }),
   popupLinkUrl: varchar("popup_link_url", { length: 500 }),
+  // เปิด/ปิดระบบแชทเทรนเนอร์-ลูกเทรนทั้งเว็บ
+  chatEnabled: boolean("chat_enabled").notNull().default(true),
+  // เปิด/ปิดระบบแต้มสะสม/badge/leaderboard ทั้งเว็บ + ค่าแต้มที่ปรับได้
+  gamificationEnabled: boolean("gamification_enabled").notNull().default(true),
+  pointsTrainingCompleted: int("points_training_completed").notNull().default(10),
+  pointsFoodLogged: int("points_food_logged").notNull().default(2),
+  pointsBadgeBonus: int("points_badge_bonus").notNull().default(20),
+  // ค่าดำเนินงานที่เดิมฝังเป็นค่าคงที่ในโค้ด — ย้ายมาให้เจ้าของระบบปรับได้จากหลังบ้าน
+  bookingCancelWindowHours: int("booking_cancel_window_hours").notNull().default(6),
+  sessionDurationMin: int("session_duration_min").notNull().default(60),
+  chatMaxMessageLength: int("chat_max_message_length").notNull().default(2000),
+  chatDeleteWindowMin: int("chat_delete_window_min").notNull().default(5),
+  maxUploadSizeMb: int("max_upload_size_mb").notNull().default(10),
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
 
@@ -352,3 +492,4 @@ export type ClientProfile = typeof clientProfiles.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
 export type Role = User["role"];
 export type SiteSettings = typeof siteSettings.$inferSelect;
+export type CalculatorResult = typeof calculatorResults.$inferSelect;

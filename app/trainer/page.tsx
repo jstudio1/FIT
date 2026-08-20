@@ -9,6 +9,7 @@ import {
   LineChart,
   Clock,
   Hourglass,
+  Play,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import {
@@ -100,6 +101,7 @@ export default async function TrainerDashboardPage({
       status: bookings.status,
       clientId: bookings.clientId,
       clientName: users.fullName,
+      sessionStartedAt: bookings.sessionStartedAt,
     })
     .from(bookings)
     .innerJoin(users, eq(users.id, bookings.clientId))
@@ -110,6 +112,17 @@ export default async function TrainerDashboardPage({
     (b) =>
       b.status === "BOOKED" &&
       slotStart(today, b.hour + 1).getTime() > now.getTime(),
+  ).length;
+
+  // ถึงเวลาเทรนแล้ว/กำลังเทรนอยู่ — เอาไว้ชวนไปหน้า "เริ่ม Session"
+  const dueNowCount = todays.filter(
+    (b) =>
+      b.status === "BOOKED" &&
+      !b.sessionStartedAt &&
+      slotStart(today, b.hour).getTime() <= now.getTime(),
+  ).length;
+  const liveNowCount = todays.filter(
+    (b) => b.status === "BOOKED" && !!b.sessionStartedAt,
   ).length;
 
   const recentResults = await db
@@ -179,6 +192,40 @@ export default async function TrainerDashboardPage({
         title={`สวัสดี, ${trainer.fullName}`}
         description="ภาพรวมและตารางเทรนของวันนี้"
       />
+
+      {(dueNowCount > 0 || liveNowCount > 0) && (
+        <Link
+          href="/trainer/session"
+          className={cn(
+            "mb-6 flex items-center gap-3 rounded-[var(--radius-lg)] border p-4 transition-colors",
+            liveNowCount > 0
+              ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+              : "border-destructive/40 bg-destructive/5 hover:bg-destructive/10 animate-pulse",
+          )}
+        >
+          <div
+            className={cn(
+              "h-10 w-10 shrink-0 rounded-full flex items-center justify-center",
+              liveNowCount > 0
+                ? "bg-primary text-primary-foreground"
+                : "bg-destructive text-destructive-foreground",
+            )}
+          >
+            <Play className="size-4.5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-sm">
+              {liveNowCount > 0
+                ? "กำลังเทรนอยู่ — แตะเพื่อดู/จบ Session"
+                : `มีลูกเทรนถึงเวลาเทรนแล้ว ${dueNowCount} คน`}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              แตะเพื่อไปหน้า &ldquo;เริ่ม Session&rdquo;
+            </div>
+          </div>
+          <ChevronRight className="size-4 text-muted-foreground shrink-0" />
+        </Link>
+      )}
 
       {profileSteps.some((s) => !s.done) && (
         <div className="mb-6">

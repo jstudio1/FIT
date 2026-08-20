@@ -9,6 +9,8 @@ import {
   CalendarClock,
   UtensilsCrossed,
   UserCircle,
+  Phone,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { tagColorClass } from "@/lib/tag-colors";
@@ -19,6 +21,8 @@ export type ClientListItem = {
   fullName: string;
   nickname: string | null;
   username: string;
+  phone: string | null;
+  email: string | null;
   active: boolean;
   avatarPath: string | null;
   createdAt: string; // ISO
@@ -182,6 +186,23 @@ export function ClientList({
                 )}
                 <ChevronRight className="size-4 sm:size-5 shrink-0 text-muted-foreground group-hover:text-primary" />
               </div>
+
+              {(c.phone || c.email) && (
+                <div className="flex flex-col gap-0.5 pl-[48px] sm:pl-[56px] text-[11px] sm:text-xs text-muted-foreground">
+                  {c.phone && (
+                    <span className="inline-flex items-center gap-1.5 truncate">
+                      <Phone className="size-3.5 shrink-0" />
+                      {c.phone}
+                    </span>
+                  )}
+                  {c.email && (
+                    <span className="inline-flex items-center gap-1.5 truncate">
+                      <Mail className="size-3.5 shrink-0" />
+                      {c.email}
+                    </span>
+                  )}
+                </div>
+              )}
 
               {c.tagIds.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1 pl-[48px] sm:pl-[56px]">

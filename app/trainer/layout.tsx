@@ -10,6 +10,7 @@ export default async function TrainerLayout({
 }) {
   const user = await requireRole("TRAINER");
   const settings = await getSiteSettings();
+  const hiddenHrefs = settings.chatEnabled ? [] : ["/trainer/chat"];
 
   return (
     <>
@@ -25,6 +26,7 @@ export default async function TrainerLayout({
         name={user.fullName}
         userId={user.id}
         avatarPath={user.avatarPath}
+        hiddenHrefs={hiddenHrefs}
       >
         {children}
       </AppShell>

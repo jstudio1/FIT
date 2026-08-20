@@ -1,12 +1,13 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { differenceInYears } from "date-fns";
+import { differenceInYears, format } from "date-fns";
 import { db } from "@/lib/db";
-import { users, clientProfiles, sessionResults } from "@/lib/db/schema";
+import { users, clientProfiles, sessionResults, calculatorResults } from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
 import { PageHeader } from "@/components/page-header";
 import {
   BmiTdeeCalculator,
   type CalculatorClientOption,
+  type SavedCalculatorResult,
 } from "@/components/bmi-tdee-calculator";
 
 export const dynamic = "force-dynamic";
@@ -64,14 +65,32 @@ export default async function TrainerCalculatorPage() {
     };
   });
 
+  const clientNameMap = new Map(clients.map((c) => [c.id, c.fullName]));
+  const savedRows = await db
+    .select()
+    .from(calculatorResults)
+    .where(eq(calculatorResults.createdBy, trainer.id))
+    .orderBy(desc(calculatorResults.createdAt))
+    .limit(30);
+  const savedResults: SavedCalculatorResult[] = savedRows.map((r) => ({
+    id: r.id,
+    dateLabel: format(r.createdAt, "d MMM yy HH:mm"),
+    clientName: r.clientId ? (clientNameMap.get(r.clientId) ?? "—") : null,
+    goal: r.goal,
+    calories: r.calories,
+    protein: r.protein,
+    carb: r.carb,
+    fat: r.fat,
+  }));
+
   return (
     <>
       <PageHeader
         title="คำนวณ BMI / TDEE"
         description="กรอกข้อมูลลูกเทรนหรือใครก็ได้เพื่อคำนวณ"
       />
-      <div className="max-w-md">
-        <BmiTdeeCalculator clients={clientOptions} />
+      <div className="max-w-4xl">
+        <BmiTdeeCalculator clients={clientOptions} savedResults={savedResults} />
       </div>
     </>
   );
