@@ -9,11 +9,13 @@
 --
 -- วิธีใช้: รันทั้งไฟล์ผ่าน phpMyAdmin (แท็บ SQL) หรือ mysql CLI บนโฮสต์จริง ครั้งเดียวจบ
 -- ไม่มีคำสั่งลบ/แก้ไขข้อมูลเดิมเลยแม้แต่บรรทัดเดียว — ปลอดภัยกับข้อมูลลูกค้าจริง 100%
--- ทุกคำสั่งเป็น CREATE TABLE IF NOT EXISTS หรือ ALTER TABLE ADD COLUMN เท่านั้น
+-- ทุกคำสั่งเป็น CREATE TABLE IF NOT EXISTS หรือ "เช็คก่อนเพิ่มคอลัมน์" (ดูด้านล่าง)
 --
--- ถ้าฐานข้อมูล production ของคุณเคยรันไฟล์ migration-2026-08-16*.sql หรือ
--- migration-2026-08-21.sql ไปแล้วบางไฟล์ (ไม่ครบ) อาจเจอ error "Table already exists"
--- หรือ "Duplicate column name" ในบางคำสั่ง — แปลว่าคำสั่งนั้นเคยรันไปแล้ว ข้ามไปคำสั่งถัดไปได้เลย
+-- ✅ อัปเดต 2026-08-22: คำสั่งเพิ่มคอลัมน์ทุกอันเขียนใหม่เป็นแบบ "เช็คก่อนเพิ่ม"
+-- (query ฝั่ง information_schema แล้วค่อย ALTER ผ่าน PREPARE/EXECUTE) แทนการเขียน
+-- ALTER TABLE ตรงๆ — รันไฟล์นี้ซ้ำกี่ครั้งก็ได้ ไม่มีวันเจอ error "Duplicate column
+-- name" หรือ "Table already exists" อีก ถ้าคอลัมน์/ตารางมีอยู่แล้วจะข้ามไปเงียบๆ
+-- (ทดสอบแล้ว: รันซ้ำ 2 รอบติดกันบนตารางเดียวกัน ไม่ error ทั้งสองรอบ)
 -- =====================================================================
 
 
@@ -43,10 +45,53 @@ CREATE TABLE IF NOT EXISTS calculator_results (
   CONSTRAINT calculator_results_client_fk FOREIGN KEY (client_id) REFERENCES users(id)
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-ALTER TABLE bookings ADD COLUMN session_started_at TIMESTAMP NULL;
-ALTER TABLE bookings ADD COLUMN session_ended_at TIMESTAMP NULL;
-ALTER TABLE bookings ADD COLUMN duration_minutes INT NULL;
-ALTER TABLE bookings ADD COLUMN duration_note TEXT NULL;
+-- เขียนแบบ "เช็คก่อนเพิ่ม" (ไม่ใช่ ALTER ตรงๆ) เพราะฐานข้อมูล production อาจเคยรัน
+-- migration บางไฟล์มาแล้วบางส่วน — ปลอดภัย รันซ้ำกี่ครั้งก็ได้ ไม่มีวัน error
+-- "Duplicate column name" อีก (ต่างจากเดิมที่เขียนเป็น ALTER TABLE ตรงๆ)
+
+SET @tbl = 'bookings';
+SET @col = 'session_started_at';
+SET @sql = (SELECT IF(
+  EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @tbl AND COLUMN_NAME = @col),
+  'SELECT 1',
+  CONCAT('ALTER TABLE `', @tbl, '` ADD COLUMN `', @col, '` TIMESTAMP NULL')
+));
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @tbl = 'bookings';
+SET @col = 'session_ended_at';
+SET @sql = (SELECT IF(
+  EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @tbl AND COLUMN_NAME = @col),
+  'SELECT 1',
+  CONCAT('ALTER TABLE `', @tbl, '` ADD COLUMN `', @col, '` TIMESTAMP NULL')
+));
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @tbl = 'bookings';
+SET @col = 'duration_minutes';
+SET @sql = (SELECT IF(
+  EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @tbl AND COLUMN_NAME = @col),
+  'SELECT 1',
+  CONCAT('ALTER TABLE `', @tbl, '` ADD COLUMN `', @col, '` INT NULL')
+));
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @tbl = 'bookings';
+SET @col = 'duration_note';
+SET @sql = (SELECT IF(
+  EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @tbl AND COLUMN_NAME = @col),
+  'SELECT 1',
+  CONCAT('ALTER TABLE `', @tbl, '` ADD COLUMN `', @col, '` TEXT NULL')
+));
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 
 -- ============ ชุดที่ 2: แชทเทรนเนอร์-ลูกเทรน (ข้อความ + รูปภาพ + ลบข้อความ) ============
@@ -133,22 +178,130 @@ CREATE TABLE IF NOT EXISTS menu_items (
 
 -- ============ ชุดที่ 5: ตั้งค่าระบบสำหรับเจ้าของ (แชท/แต้มสะสม/ค่าดำเนินงาน) ============
 
-ALTER TABLE site_settings ADD COLUMN chat_enabled TINYINT(1) NOT NULL DEFAULT 1;
-ALTER TABLE site_settings ADD COLUMN gamification_enabled TINYINT(1) NOT NULL DEFAULT 1;
-ALTER TABLE site_settings ADD COLUMN points_training_completed INT NOT NULL DEFAULT 10;
-ALTER TABLE site_settings ADD COLUMN points_food_logged INT NOT NULL DEFAULT 2;
-ALTER TABLE site_settings ADD COLUMN points_badge_bonus INT NOT NULL DEFAULT 20;
+-- (ค่าดำเนินงานกลุ่มนี้เดิมฝังเป็นค่าคงที่ในโค้ด — ย้ายมาให้เจ้าของระบบปรับได้จากหลังบ้าน
+-- ส่วน login_theme คือธีมหน้า Login ที่เลือกได้ — เรียบง่าย / แบ่งครึ่งจอ+มือถือ / กรอบมือถือลอย
+-- ทุกคอลัมน์เขียนแบบ "เช็คก่อนเพิ่ม" เหมือนชุดที่ 1 ด้านบน — ปลอดภัย รันซ้ำได้)
 
--- ค่าดำเนินงานที่เดิมฝังเป็นค่าคงที่ในโค้ด — ย้ายมาให้เจ้าของระบบปรับได้จากหลังบ้าน
-ALTER TABLE site_settings
-  ADD COLUMN booking_cancel_window_hours INT NOT NULL DEFAULT 6,
-  ADD COLUMN session_duration_min INT NOT NULL DEFAULT 60,
-  ADD COLUMN chat_max_message_length INT NOT NULL DEFAULT 2000,
-  ADD COLUMN chat_delete_window_min INT NOT NULL DEFAULT 5,
-  ADD COLUMN max_upload_size_mb INT NOT NULL DEFAULT 10;
+SET @tbl = 'site_settings';
+SET @col = 'chat_enabled';
+SET @sql = (SELECT IF(
+  EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @tbl AND COLUMN_NAME = @col),
+  'SELECT 1',
+  CONCAT('ALTER TABLE `', @tbl, '` ADD COLUMN `', @col, '` TINYINT(1) NOT NULL DEFAULT 1')
+));
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
--- ธีมหน้า Login ให้เจ้าของระบบเลือกได้ (เรียบง่าย / แบ่งครึ่งจอ+มือถือ / กรอบมือถือลอย)
-ALTER TABLE site_settings ADD COLUMN login_theme ENUM('simple','split','frame') NOT NULL DEFAULT 'simple';
+SET @tbl = 'site_settings';
+SET @col = 'gamification_enabled';
+SET @sql = (SELECT IF(
+  EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @tbl AND COLUMN_NAME = @col),
+  'SELECT 1',
+  CONCAT('ALTER TABLE `', @tbl, '` ADD COLUMN `', @col, '` TINYINT(1) NOT NULL DEFAULT 1')
+));
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @tbl = 'site_settings';
+SET @col = 'points_training_completed';
+SET @sql = (SELECT IF(
+  EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @tbl AND COLUMN_NAME = @col),
+  'SELECT 1',
+  CONCAT('ALTER TABLE `', @tbl, '` ADD COLUMN `', @col, '` INT NOT NULL DEFAULT 10')
+));
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @tbl = 'site_settings';
+SET @col = 'points_food_logged';
+SET @sql = (SELECT IF(
+  EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @tbl AND COLUMN_NAME = @col),
+  'SELECT 1',
+  CONCAT('ALTER TABLE `', @tbl, '` ADD COLUMN `', @col, '` INT NOT NULL DEFAULT 2')
+));
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @tbl = 'site_settings';
+SET @col = 'points_badge_bonus';
+SET @sql = (SELECT IF(
+  EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @tbl AND COLUMN_NAME = @col),
+  'SELECT 1',
+  CONCAT('ALTER TABLE `', @tbl, '` ADD COLUMN `', @col, '` INT NOT NULL DEFAULT 20')
+));
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @tbl = 'site_settings';
+SET @col = 'booking_cancel_window_hours';
+SET @sql = (SELECT IF(
+  EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @tbl AND COLUMN_NAME = @col),
+  'SELECT 1',
+  CONCAT('ALTER TABLE `', @tbl, '` ADD COLUMN `', @col, '` INT NOT NULL DEFAULT 6')
+));
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @tbl = 'site_settings';
+SET @col = 'session_duration_min';
+SET @sql = (SELECT IF(
+  EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @tbl AND COLUMN_NAME = @col),
+  'SELECT 1',
+  CONCAT('ALTER TABLE `', @tbl, '` ADD COLUMN `', @col, '` INT NOT NULL DEFAULT 60')
+));
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @tbl = 'site_settings';
+SET @col = 'chat_max_message_length';
+SET @sql = (SELECT IF(
+  EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @tbl AND COLUMN_NAME = @col),
+  'SELECT 1',
+  CONCAT('ALTER TABLE `', @tbl, '` ADD COLUMN `', @col, '` INT NOT NULL DEFAULT 2000')
+));
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @tbl = 'site_settings';
+SET @col = 'chat_delete_window_min';
+SET @sql = (SELECT IF(
+  EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @tbl AND COLUMN_NAME = @col),
+  'SELECT 1',
+  CONCAT('ALTER TABLE `', @tbl, '` ADD COLUMN `', @col, '` INT NOT NULL DEFAULT 5')
+));
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @tbl = 'site_settings';
+SET @col = 'max_upload_size_mb';
+SET @sql = (SELECT IF(
+  EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @tbl AND COLUMN_NAME = @col),
+  'SELECT 1',
+  CONCAT('ALTER TABLE `', @tbl, '` ADD COLUMN `', @col, '` INT NOT NULL DEFAULT 10')
+));
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @tbl = 'site_settings';
+SET @col = 'login_theme';
+SET @sql = (SELECT IF(
+  EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @tbl AND COLUMN_NAME = @col),
+  'SELECT 1',
+  CONCAT('ALTER TABLE `', @tbl, '` ADD COLUMN `', @col, '` ENUM(''simple'',''split'',''frame'') NOT NULL DEFAULT ''simple''')
+));
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- =====================================================================
 -- จบไฟล์ — หลังรันเสร็จ อย่าลืม:
