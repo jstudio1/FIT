@@ -144,9 +144,9 @@ export default async function OwnerTrainerDetailPage({
         กลับไปรายชื่อเทรนเนอร์
       </Link>
 
-      <div className="mb-2">
+      <div className="mb-2 animate-fade-up">
         <div className="flex items-center gap-4">
-          <div className="h-14 w-14 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-semibold overflow-hidden">
+          <div className="h-14 w-14 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-semibold overflow-hidden ring-4 ring-primary/10">
             {trainer.avatarPath ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -221,7 +221,10 @@ export default async function OwnerTrainerDetailPage({
           />
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5">
+        <div
+          style={{ "--stagger": 1 } as React.CSSProperties}
+          className="animate-fade-up rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5"
+        >
           <h3 className="font-semibold mb-4">แก้ไขข้อมูลเทรนเนอร์</h3>
           <EditTrainerForm
             trainer={{
@@ -243,11 +246,12 @@ export default async function OwnerTrainerDetailPage({
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
-              {clients.map((c) => (
+              {clients.map((c, i) => (
                 <Link
                   key={c.id}
                   href={`/owner/clients/${c.id}`}
-                  className="group flex items-center gap-4 rounded-[var(--radius-lg)] border border-border bg-card p-4 shadow-sm hover:border-primary/40 transition-colors"
+                  style={{ "--stagger": Math.min(i, 8) } as React.CSSProperties}
+                  className="animate-fade-up hover-lift group flex items-center gap-4 rounded-[var(--radius-lg)] border border-border bg-card p-4 shadow-sm hover:border-primary/40 transition-colors"
                 >
                   <div className="h-10 w-10 shrink-0 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-semibold overflow-hidden">
                     {c.avatarPath ? (
@@ -270,7 +274,7 @@ export default async function OwnerTrainerDetailPage({
                     </div>
                     <div className="text-sm text-muted-foreground">@{c.username}</div>
                   </div>
-                  <ChevronRight className="size-5 text-muted-foreground group-hover:text-primary" />
+                  <ChevronRight className="size-5 text-muted-foreground group-hover:text-primary transition-transform group-hover:translate-x-1" />
                 </Link>
               ))}
             </div>

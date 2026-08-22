@@ -144,9 +144,9 @@ export default async function OwnerReportsPage({
               key={m}
               href={`/owner/reports?mode=${m}&from=${fromStr}&to=${toStr}${trainerQS}`}
               className={cn(
-                "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                "px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200",
                 mode === m
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-primary text-primary-foreground shadow-sm scale-[1.03]"
                   : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground",
               )}
             >
@@ -178,13 +178,16 @@ export default async function OwnerReportsPage({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-        <StatCard label="สำเร็จ" value={summary.completed} icon={CheckCircle2} />
-        <StatCard label="ขาด" value={summary.noShow} icon={XCircle} />
-        <StatCard label="ยกเลิก" value={summary.cancelled} icon={Ban} />
-        <StatCard label="รวมทั้งหมด" value={summary.total} icon={ClipboardList} />
+        <StatCard stagger={0} label="สำเร็จ" value={summary.completed} icon={CheckCircle2} />
+        <StatCard stagger={1} label="ขาด" value={summary.noShow} icon={XCircle} />
+        <StatCard stagger={2} label="ยกเลิก" value={summary.cancelled} icon={Ban} />
+        <StatCard stagger={3} label="รวมทั้งหมด" value={summary.total} icon={ClipboardList} />
       </div>
 
-      <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5 mb-6">
+      <div
+        style={{ "--stagger": 4 } as React.CSSProperties}
+        className="animate-fade-up hover-lift rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5 mb-6"
+      >
         <ReportChart data={buckets} />
         {clamp.clamped && (
           <p className="text-xs text-muted-foreground mt-2">
@@ -210,8 +213,12 @@ export default async function OwnerReportsPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {perTrainerRows.map((t) => (
-                    <tr key={t.trainerId} className="border-b border-border last:border-0">
+                  {perTrainerRows.map((t, i) => (
+                    <tr
+                      key={t.trainerId}
+                      style={{ "--stagger": Math.min(i, 8) } as React.CSSProperties}
+                      className="animate-fade-up border-b border-border last:border-0 transition-colors hover:bg-muted/40"
+                    >
                       <td className="px-5 py-2.5 font-medium">{t.trainerName}</td>
                       <td className="px-4 py-2.5 text-right">{t.completed}</td>
                       <td className="px-4 py-2.5 text-right">{t.noShow}</td>

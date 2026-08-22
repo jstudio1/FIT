@@ -323,3 +323,34 @@ export async function saveOperationalSettingsAction(
   revalidatePath("/", "layout");
   return { success: "บันทึกค่าดำเนินงานแล้ว" };
 }
+
+/* ---------------- ธีมหน้า Login ---------------- */
+const LOGIN_THEMES = ["simple", "split", "frame"] as const;
+
+export async function saveLoginThemeAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireRole("OWNER");
+
+  const loginTheme = String(formData.get("loginTheme") ?? "");
+  if (!LOGIN_THEMES.includes(loginTheme as (typeof LOGIN_THEMES)[number])) {
+    return { error: "กรุณาเลือกธีมที่ถูกต้อง" };
+  }
+
+  const [existing] = await db
+    .select({ id: siteSettings.id })
+    .from(siteSettings)
+    .where(eq(siteSettings.id, 1))
+    .limit(1);
+
+  const data = { loginTheme: loginTheme as (typeof LOGIN_THEMES)[number] };
+  if (existing) {
+    await db.update(siteSettings).set(data).where(eq(siteSettings.id, 1));
+  } else {
+    await db.insert(siteSettings).values({ id: 1, ...data });
+  }
+
+  revalidatePath("/", "layout");
+  return { success: "บันทึกธีมหน้า Login แล้ว" };
+}

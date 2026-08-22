@@ -1,20 +1,22 @@
 import Link from "next/link";
-import { UtensilsCrossed, ChefHat, Leaf, Flame, Target, Cookie, BookOpen } from "lucide-react";
+import { UtensilsCrossed, ChefHat, Leaf, Flame, Target, Cookie, BookOpen, Dices } from "lucide-react";
 import { requireRole } from "@/lib/authz";
 import {
   getDailyMenu,
   getMenusByTag,
   getMenusByRemainingCalories,
   getMenuCounts,
+  getRandomMenus,
 } from "@/lib/menu";
 import { PageHeader } from "@/components/page-header";
 import { MenuCard } from "@/components/menu-card";
 import { CalorieRing } from "@/components/calorie-ring";
+import { MenuLuckyDraw } from "@/components/menu-lucky-draw";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-type Tab = "daily" | "clean" | "lowcal" | "dessert" | "remaining";
+type Tab = "daily" | "clean" | "lowcal" | "dessert" | "remaining" | "lucky";
 
 export default async function ClientMenuPage({
   searchParams,
@@ -24,7 +26,7 @@ export default async function ClientMenuPage({
   const client = await requireRole("CLIENT");
   const sp = await searchParams;
   const tab: Tab = (
-    ["daily", "clean", "lowcal", "dessert", "remaining"] as Tab[]
+    ["daily", "clean", "lowcal", "dessert", "remaining", "lucky"] as Tab[]
   ).includes(sp.tab as Tab)
     ? (sp.tab as Tab)
     : "daily";
@@ -37,10 +39,12 @@ export default async function ClientMenuPage({
     { key: "lowcal", label: "แคลน้อย", icon: Flame, count: counts.lowCal },
     { key: "dessert", label: "ขนมเพื่อสุขภาพ", icon: Cookie, count: counts.dessert },
     { key: "remaining", label: "ตามแคลที่เหลือของฉัน", icon: Target, count: null },
+    { key: "lucky", label: "เสี่ยงโชคเมนู", icon: Dices, count: null },
   ];
 
   let menus: Awaited<ReturnType<typeof getDailyMenu>> = [];
   let remainingInfo: Awaited<ReturnType<typeof getMenusByRemainingCalories>>["remaining"] | null = null;
+  let luckyMenus: Awaited<ReturnType<typeof getRandomMenus>> = [];
 
   if (tab === "daily") {
     menus = await getDailyMenu(8);
@@ -50,6 +54,8 @@ export default async function ClientMenuPage({
     menus = await getMenusByTag("LOW_CAL");
   } else if (tab === "dessert") {
     menus = await getMenusByTag("DESSERT");
+  } else if (tab === "lucky") {
+    luckyMenus = await getRandomMenus(10);
   } else {
     const res = await getMenusByRemainingCalories(client.id);
     menus = res.menus;
@@ -131,7 +137,9 @@ export default async function ClientMenuPage({
         </div>
       )}
 
-      {menus.length === 0 ? (
+      {tab === "lucky" ? (
+        <MenuLuckyDraw initialMenus={luckyMenus} />
+      ) : menus.length === 0 ? (
         <div className="text-center py-16 rounded-[var(--radius-lg)] border border-dashed border-border bg-card text-muted-foreground">
           <UtensilsCrossed className="size-8 mx-auto mb-2" />
           {tab === "remaining" ? "ยังไม่มีเมนูที่พอดีกับแคลที่เหลือ" : "ยังไม่มีเมนูในหมวดนี้"}

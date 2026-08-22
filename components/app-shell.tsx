@@ -20,11 +20,12 @@ import {
   LogOut,
   Menu,
   X,
-  Calculator,
   Play,
   MessageCircle,
   Trophy,
   ChefHat,
+  HeartPulse,
+  Gamepad2,
   type LucideIcon,
 } from "lucide-react";
 import { logoutAction } from "@/app/_actions/auth";
@@ -56,7 +57,9 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/trainer/schedule", label: "ตารางเทรน", icon: CalendarDays },
     { href: "/trainer/reports", label: "รายงาน", icon: ClipboardList },
     { href: "/trainer/food-review", label: "ตรวจอาหาร", icon: UtensilsCrossed },
-    { href: "/trainer/calculator", label: "คำนวณ BMI/TDEE", icon: Calculator },
+    { href: "/trainer/menu", label: "เมนูแนะนำ", icon: ChefHat },
+    { href: "/trainer/tools", label: "เครื่องมือสุขภาพ", icon: HeartPulse },
+    { href: "/trainer/games", label: "FitGame", icon: Gamepad2 },
     { href: "/trainer/profile", label: "โปรไฟล์", icon: UserCircle },
   ],
   CLIENT: [
@@ -67,7 +70,8 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/client/results", label: "ผลลัพธ์", icon: LineChart },
     { href: "/client/food", label: "ส่งอาหาร", icon: Camera },
     { href: "/client/menu", label: "เมนูแนะนำ", icon: ChefHat },
-    { href: "/client/calculator", label: "คำนวณ BMI/TDEE", icon: Calculator },
+    { href: "/client/tools", label: "เครื่องมือสุขภาพ", icon: HeartPulse },
+    { href: "/client/games", label: "FitGame", icon: Gamepad2 },
     { href: "/client/profile", label: "โปรไฟล์", icon: UserCircle },
     { href: "/client/privacy", label: "ความเป็นส่วนตัว", icon: ShieldCheck },
   ],
@@ -133,13 +137,18 @@ export function AppShell({
                 href={item.href}
                 onClick={() => setOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-md)] text-sm font-medium transition-colors",
+                  "group flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-md)] text-sm font-medium transition-all duration-200",
                   active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground hover:translate-x-0.5",
                 )}
               >
-                <Icon className="size-4.5" />
+                <Icon
+                  className={cn(
+                    "size-4.5 transition-transform duration-200",
+                    active ? "scale-110" : "group-hover:scale-110",
+                  )}
+                />
                 {item.label}
                 {item.href.endsWith("/chat") && <ChatNavBadge />}
               </Link>

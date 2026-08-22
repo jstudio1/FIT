@@ -33,7 +33,7 @@ export function IntegrationsStatus() {
   ];
 
   return (
-    <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5 max-w-xl">
+    <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5">
       <div className="flex items-center gap-2 mb-1">
         <KeyRound className="size-4.5 text-primary" />
         <h3 className="font-semibold">API & บริการภายนอก</h3>
@@ -43,8 +43,12 @@ export function IntegrationsStatus() {
         <code className="px-1 py-0.5 rounded bg-muted text-foreground">.env</code> บนเซิร์ฟเวอร์แล้ว restart แอป
       </p>
       <div className="divide-y divide-border">
-        {integrations.map((it) => (
-          <div key={it.name} className="py-3 first:pt-0 last:pb-0">
+        {integrations.map((it, i) => (
+          <div
+            key={it.name}
+            style={{ "--stagger": i } as React.CSSProperties}
+            className="animate-fade-up py-3 first:pt-0 last:pb-0"
+          >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-sm font-medium">{it.name}</div>

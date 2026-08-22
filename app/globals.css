@@ -85,3 +85,255 @@ body {
 .animate-menu-in {
   animation: menu-card-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* หน้า login — บลอบไล่เฉดสีลอยเบาๆ ด้านหลัง */
+@keyframes login-blob-float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(3%, 4%) scale(1.06);
+  }
+  66% {
+    transform: translate(-3%, -2%) scale(0.96);
+  }
+}
+.animate-login-blob {
+  animation: login-blob-float 14s ease-in-out infinite;
+}
+.animate-login-blob-slow {
+  animation: login-blob-float 19s ease-in-out infinite reverse;
+}
+
+/* หน้า login — การ์ดค่อยๆ ไล่ขึ้นตอนโหลด */
+@keyframes login-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-login-fade-in {
+  animation: login-fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* หน้า login — วงแหวนเรืองแสงเบาๆ รอบไอคอน */
+@keyframes login-icon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 35%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--primary) 0%, transparent);
+  }
+}
+.animate-login-icon-pulse {
+  animation: login-icon-pulse 2.4s ease-out infinite;
+}
+
+/* ---------------- ลูกเล่นใช้ทั่วไป (หน้าเจ้าของระบบ ฯลฯ) ---------------- */
+
+/* การ์ด/แถวไล่ขึ้นทีละใบตอนโหลดหน้า — ใส่ style="--stagger: N" เพื่อหน่วงเวลาแต่ละตัว */
+@keyframes fade-up-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: fade-up-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--stagger, 0) * 55ms);
+}
+
+/* การ์ดสถิติ/รายการ — ยกตัวเบาๆ พร้อมเงาตอน hover */
+.hover-lift {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--foreground) 18%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+
+/* ไอคอนในการ์ดสถิติ — ขยายเบาๆ ตอน hover การ์ด */
+.icon-pop {
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.hover-lift:hover .icon-pop {
+  transform: scale(1.12) rotate(-4deg);
+}
+
+/* เส้นขอบไล่สีวิ่ง — ใช้กับปุ่ม/แท็บที่ active เพื่อความรู้สึก "ล้ำ" ขึ้นเล็กน้อย */
+@keyframes shimmer-sweep {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+.animate-shimmer {
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in srgb, var(--primary-foreground) 55%, transparent) 45%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-sweep 2.2s ease-in-out infinite;
+}
+
+/* ---------------- วงล้อเสี่ยงโชคเมนู ---------------- */
+
+/* แสงฟ้าแลบวาบตอนวงล้อหยุด (ก่อนการ์ดผลลัพธ์เด้งขึ้น) */
+@keyframes lucky-flash {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.animate-lucky-flash {
+  animation: lucky-flash 0.5s ease-out both;
+}
+
+/* วงแสงพุ่งขยายออกจากจุดที่ตัวเลือกหยุด — ให้ความรู้สึก "เด้งสะใจ" แบบกล่องสุ่ม */
+@keyframes lucky-glow-burst {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+.animate-lucky-glow {
+  animation: lucky-glow-burst 0.7s ease-out both;
+}
+
+/* ปุ่มเสี่ยงโชค — บีบตัวเร่งพลังตอนกดก่อนวงล้อจะเริ่มหมุน */
+@keyframes lucky-charge {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(0.85);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-lucky-charge {
+  animation: lucky-charge 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* กรอบเรืองแสงลอยรอบวงล้อตอนกำลังหมุน */
+@keyframes lucky-glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 35%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 16px color-mix(in srgb, var(--primary) 0%, transparent);
+  }
+}
+.animate-lucky-glow-pulse {
+  animation: lucky-glow-pulse 1s ease-out infinite;
+}
+
+/* การ์ดผลลัพธ์ตอนเปิดเผย — เด้งเข้าแบบสะใจ */
+@keyframes lucky-reveal-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) translateY(20px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.animate-lucky-reveal {
+  animation: lucky-reveal-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* คอนเฟตติ้พุ่งออกจากจุดศูนย์กลางตอนเปิดผลเสี่ยงโชค */
+@keyframes lucky-confetti-burst {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot, 180deg)) scale(0.3);
+  }
+}
+.animate-lucky-confetti {
+  animation: lucky-confetti-burst 1.1s cubic-bezier(0.2, 0.7, 0.4, 1) both;
+}
+
+/* ---------------- FitGame — การ์ดเกมจับคู่เมนู (พลิกการ์ด 3D) ---------------- */
+.game-card-flip {
+  perspective: 1000px;
+}
+.game-card-flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.45s cubic-bezier(0.4, 0.2, 0.2, 1);
+  transform-style: preserve-3d;
+}
+.game-card-flip-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+.game-card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.game-card-face-back {
+  transform: rotateY(180deg);
+}
+
+/* การ์ดที่จับคู่ถูกแล้ว — เด้งเบาๆ ฉลอง */
+@keyframes game-card-matched {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+.animate-game-matched {
+  animation: game-card-matched 0.4s ease-in-out;
+}
+
+/* เข็มจับจังหวะสั่นตอนแตะโดนโซนพอดี */
+@keyframes game-timing-hit {
+  0%, 100% {
+    transform: translateY(-50%) scale(1);
+  }
+  50% {
+    transform: translateY(-50%) scale(1.4);
+  }
+}
+.animate-game-hit {
+  animation: game-timing-hit 0.3s ease-in-out;
+}

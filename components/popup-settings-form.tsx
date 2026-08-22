@@ -64,7 +64,7 @@ export function PopupSettingsForm({
   }
 
   return (
-    <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5 space-y-5 max-w-xl">
+    <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5 space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="font-semibold">ป็อปอัพประกาศ</h3>

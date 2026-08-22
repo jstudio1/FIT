@@ -469,6 +469,8 @@ export const siteSettings = mysqlTable("site_settings", {
   chatMaxMessageLength: int("chat_max_message_length").notNull().default(2000),
   chatDeleteWindowMin: int("chat_delete_window_min").notNull().default(5),
   maxUploadSizeMb: int("max_upload_size_mb").notNull().default(10),
+  // ธีมหน้า login — เรียบง่าย / แบ่งครึ่งจอ+มือถือ / กรอบมือถือลอย (เลือกได้จากหลังบ้าน)
+  loginTheme: mysqlEnum("login_theme", ["simple", "split", "frame"]).notNull().default("simple"),
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
 

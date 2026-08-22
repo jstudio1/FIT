@@ -49,13 +49,14 @@ export function OwnerChatInboxList({ items }: { items: OwnerChatInboxItem[] }) {
         </div>
       ) : (
         <div className="rounded-[var(--radius-lg)] border border-border bg-card divide-y divide-border overflow-hidden">
-          {filtered.map((c) => (
+          {filtered.map((c, i) => (
             <Link
               key={`${c.trainerId}-${c.clientId}`}
               href={`/owner/chat/${c.trainerId}/${c.clientId}`}
-              className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors"
+              style={{ "--stagger": Math.min(i, 8) } as React.CSSProperties}
+              className="animate-fade-up group flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors"
             >
-              <div className="h-11 w-11 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold overflow-hidden">
+              <div className="h-11 w-11 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold overflow-hidden transition-transform group-hover:scale-105">
                 {c.clientAvatar ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -84,7 +85,7 @@ export function OwnerChatInboxList({ items }: { items: OwnerChatInboxItem[] }) {
                   {format(new Date(c.lastAt), "d MMM HH:mm")}
                 </span>
               )}
-              <ChevronRight className="size-4 text-muted-foreground shrink-0" />
+              <ChevronRight className="size-4 text-muted-foreground shrink-0 transition-transform group-hover:translate-x-1" />
             </Link>
           ))}
         </div>

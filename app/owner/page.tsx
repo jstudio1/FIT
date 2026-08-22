@@ -1,8 +1,24 @@
 import { addDays, subDays, format } from "date-fns";
 import { and, eq, gte, inArray, isNull, isNotNull, lte, sql } from "drizzle-orm";
-import { Users, UserCog, CalendarCheck, Clock, CheckCircle2, CalendarRange } from "lucide-react";
+import {
+  Users,
+  UserCog,
+  CalendarCheck,
+  Clock,
+  CheckCircle2,
+  CalendarRange,
+  Star,
+  Award,
+} from "lucide-react";
 import { db } from "@/lib/db";
-import { users, bookings, foodLogs, trainerSettings } from "@/lib/db/schema";
+import {
+  users,
+  bookings,
+  foodLogs,
+  trainerSettings,
+  pointEvents,
+  clientBadges,
+} from "@/lib/db/schema";
 import {
   weekStart,
   toDateStr,
@@ -12,10 +28,12 @@ import {
   OPEN_HOUR,
   CLOSE_HOUR,
 } from "@/lib/schedule";
+import { getSiteSettings } from "@/lib/settings";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { SignupTrendChart, type SignupPoint } from "@/components/signup-trend-chart";
 import { OwnerAggregateSchedule, type AggregateSlot } from "@/components/owner-aggregate-schedule";
+import { OwnerLiveSessions, type LiveSessionRow } from "@/components/owner-live-sessions";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +43,7 @@ export default async function OwnerOverviewPage({
   searchParams: Promise<{ week?: string }>;
 }) {
   const sp = await searchParams;
+  const settings = await getSiteSettings();
 
   const ws = weekStart(new Date());
   const weekFrom = toDateStr(ws);
@@ -56,6 +75,52 @@ export default async function OwnerOverviewPage({
     .select({ c: sql<number>`count(*)` })
     .from(foodLogs)
     .where(isNotNull(foodLogs.reviewedAt));
+
+  // แต้มสะสม/Badge ทั้งระบบ (เฉพาะตอนเปิดใช้งานระบบแต้มสะสม)
+  let totalPointsAllTime = 0;
+  let totalBadgesUnlocked = 0;
+  if (settings.gamificationEnabled) {
+    const [pointsRow] = await db
+      .select({ total: sql<number>`coalesce(sum(${pointEvents.points}), 0)` })
+      .from(pointEvents);
+    totalPointsAllTime = Number(pointsRow?.total ?? 0);
+    const [badgeRow] = await db.select({ c: sql<number>`count(*)` }).from(clientBadges);
+    totalBadgesUnlocked = Number(badgeRow?.c ?? 0);
+  }
+
+  // กำลังเทรนอยู่ตอนนี้ (real-time) — bookings ที่เริ่มจับเวลาแล้วแต่ยังไม่จบ
+  const liveBookingRows = await db
+    .select({
+      id: bookings.id,
+      trainerId: bookings.trainerId,
+      clientId: bookings.clientId,
+      sessionStartedAt: bookings.sessionStartedAt,
+    })
+    .from(bookings)
+    .where(and(isNotNull(bookings.sessionStartedAt), isNull(bookings.sessionEndedAt)));
+
+  const liveUserIds = [...new Set(liveBookingRows.flatMap((b) => [b.trainerId, b.clientId]))];
+  const liveUsers = liveUserIds.length
+    ? await db
+        .select({
+          id: users.id,
+          fullName: users.fullName,
+          nickname: users.nickname,
+          avatarPath: users.avatarPath,
+        })
+        .from(users)
+        .where(inArray(users.id, liveUserIds))
+    : [];
+  const liveUserMap = new Map(liveUsers.map((u) => [u.id, u]));
+  const liveSessions: LiveSessionRow[] = liveBookingRows.map((b) => ({
+    bookingId: b.id,
+    trainerName: liveUserMap.get(b.trainerId)?.fullName ?? "—",
+    clientId: b.clientId,
+    clientName: liveUserMap.get(b.clientId)?.fullName ?? "—",
+    clientNickname: liveUserMap.get(b.clientId)?.nickname ?? null,
+    clientAvatarPath: liveUserMap.get(b.clientId)?.avatarPath ?? null,
+    sessionStartedAt: b.sessionStartedAt!.toISOString(),
+  }));
 
   // อัตราการสมัคร 30 วันล่าสุด
   const thirtyDaysAgo = subDays(new Date(), 29);
@@ -133,42 +198,75 @@ export default async function OwnerOverviewPage({
         description="สรุปภาพรวมทั้งระบบสำหรับเจ้าของ"
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div style={{ "--stagger": 0 } as React.CSSProperties} className="animate-fade-up mb-6">
+        <OwnerLiveSessions sessions={liveSessions} />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
+          stagger={1}
           label="เทรนเนอร์ทั้งหมด"
           value={Number(trainerCount?.c ?? 0)}
           icon={UserCog}
           hint={`ใช้งานอยู่ ${Number(activeTrainerCount?.c ?? 0)} คน`}
         />
         <StatCard
+          stagger={2}
           label="ลูกเทรนทั้งหมด"
           value={Number(clientCount?.c ?? 0)}
           icon={Users}
         />
         <StatCard
+          stagger={3}
           label="การจองสัปดาห์นี้"
           value={Number(weekBookings?.c ?? 0)}
           icon={CalendarCheck}
           hint={`${weekFrom} – ${weekTo}`}
         />
         <StatCard
+          stagger={4}
           label="อาหารรอตรวจ"
           value={Number(pendingFood?.c ?? 0)}
           icon={Clock}
         />
         <StatCard
+          stagger={5}
           label="อาหารตรวจแล้ว"
           value={Number(reviewedFood?.c ?? 0)}
           icon={CheckCircle2}
         />
+        {settings.gamificationEnabled && (
+          <>
+            <StatCard
+              stagger={6}
+              label="แต้มสะสมทั้งระบบ"
+              value={totalPointsAllTime}
+              icon={Star}
+              hint="สะสมรวมทุกลูกเทรน"
+            />
+            <StatCard
+              stagger={7}
+              label="Badge ที่ปลดล็อกแล้ว"
+              value={totalBadgesUnlocked}
+              icon={Award}
+              hint="รวมทุกลูกเทรน"
+            />
+          </>
+        )}
       </div>
 
-      <div className="mt-8 rounded-[var(--radius-lg)] border border-border bg-card p-5 shadow-sm">
+      <div
+        style={{ "--stagger": 8 } as React.CSSProperties}
+        className="animate-fade-up hover-lift mt-8 rounded-[var(--radius-lg)] border border-border bg-card p-5 shadow-sm"
+      >
         <h3 className="font-semibold mb-4">อัตราการสมัครสมาชิก (30 วันล่าสุด)</h3>
         <SignupTrendChart data={signupData} />
       </div>
 
-      <div className="mt-8">
+      <div
+        style={{ "--stagger": 9 } as React.CSSProperties}
+        className="animate-fade-up mt-8"
+      >
         <h3 className="font-semibold mb-3 flex items-center gap-2">
           <CalendarRange className="size-4.5 text-primary" />
           ตารางเทรนภาพรวม (ทุกเทรนเนอร์)
@@ -184,7 +282,10 @@ export default async function OwnerOverviewPage({
         />
       </div>
 
-      <div className="mt-8 rounded-[var(--radius-lg)] border border-border bg-card p-5 shadow-sm">
+      <div
+        style={{ "--stagger": 10 } as React.CSSProperties}
+        className="animate-fade-up hover-lift mt-8 rounded-[var(--radius-lg)] border border-border bg-card p-5 shadow-sm"
+      >
         <h3 className="font-semibold mb-1">เริ่มต้นใช้งาน</h3>
         <p className="text-sm text-muted-foreground">
           ไปที่หน้า <span className="font-medium text-foreground">เทรนเนอร์</span>{" "}

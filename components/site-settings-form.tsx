@@ -31,7 +31,7 @@ export function SiteSettingsForm({ settings }: { settings: Settings }) {
   return (
     <form
       action={formAction}
-      className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5 space-y-4 max-w-2xl"
+      className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5 space-y-4"
     >
       <div>
         <Label htmlFor="siteName">ชื่อเว็บไซต์</Label>

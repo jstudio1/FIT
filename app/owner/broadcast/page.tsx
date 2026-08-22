@@ -61,10 +61,11 @@ export default async function OwnerBroadcastPage() {
             {history.map((h, i) => (
               <div
                 key={i}
-                className="rounded-[var(--radius-md)] border border-border bg-card p-4"
+                style={{ "--stagger": Math.min(i, 8) } as React.CSSProperties}
+                className="animate-fade-up hover-lift rounded-[var(--radius-md)] border border-border bg-card p-4"
               >
                 <div className="flex items-center gap-2 font-medium text-sm">
-                  <Megaphone className="size-4 text-primary" />
+                  <Megaphone className="icon-pop size-4 text-primary" />
                   {h.title}
                 </div>
                 {h.message && (

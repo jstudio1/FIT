@@ -49,10 +49,11 @@ export default async function OwnerTrainersPage() {
             <span className="text-center">ลูกเทรน</span>
             <span className="text-right">สถานะ</span>
           </div>
-          {trainers.map((t) => (
+          {trainers.map((t, i) => (
             <div
               key={t.id}
-              className="grid sm:grid-cols-[1fr_1fr_auto_auto] gap-2 sm:gap-4 px-5 py-4 border-b border-border last:border-0 items-center"
+              style={{ "--stagger": Math.min(i, 8) } as React.CSSProperties}
+              className="animate-fade-up grid sm:grid-cols-[1fr_1fr_auto_auto] gap-2 sm:gap-4 px-5 py-4 border-b border-border last:border-0 items-center transition-colors hover:bg-muted/40"
             >
               <Link
                 href={`/owner/trainers/${t.id}`}
@@ -101,12 +102,18 @@ export default async function OwnerTrainersPage() {
               </div>
               <div className="flex items-center gap-3 sm:justify-end">
                 <span
-                  className={`text-xs px-2 py-0.5 rounded-full ${
+                  className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full ${
                     t.active
                       ? "bg-accent text-accent-foreground"
                       : "bg-muted text-muted-foreground"
                   }`}
                 >
+                  {t.active && (
+                    <span className="relative flex size-1.5">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-foreground/60" />
+                      <span className="relative inline-flex size-1.5 rounded-full bg-accent-foreground" />
+                    </span>
+                  )}
                   {t.active ? "ใช้งาน" : "ปิดใช้งาน"}
                 </span>
                 <form action={setTrainerActiveAction}>

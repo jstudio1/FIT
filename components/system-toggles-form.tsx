@@ -64,7 +64,7 @@ export function SystemTogglesForm({
   return (
     <form
       action={formAction}
-      className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5 space-y-5 max-w-xl"
+      className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5 space-y-5"
     >
       <input type="hidden" name="chatEnabled" value={chatEnabled ? "on" : "off"} />
       <input type="hidden" name="gamificationEnabled" value={gamificationEnabled ? "on" : "off"} />

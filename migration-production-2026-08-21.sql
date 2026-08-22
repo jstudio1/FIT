@@ -147,9 +147,13 @@ ALTER TABLE site_settings
   ADD COLUMN chat_delete_window_min INT NOT NULL DEFAULT 5,
   ADD COLUMN max_upload_size_mb INT NOT NULL DEFAULT 10;
 
+-- ธีมหน้า Login ให้เจ้าของระบบเลือกได้ (เรียบง่าย / แบ่งครึ่งจอ+มือถือ / กรอบมือถือลอย)
+ALTER TABLE site_settings ADD COLUMN login_theme ENUM('simple','split','frame') NOT NULL DEFAULT 'simple';
+
 -- =====================================================================
 -- จบไฟล์ — หลังรันเสร็จ อย่าลืม:
---   1) รัน `npm run seed:menu` บนเซิร์ฟเวอร์ เพื่อโหลดเมนูแนะนำ (ต้องมี PEXELS_API_KEY ใน .env)
---   2) เพิ่ม PEXELS_API_KEY ใน .env บนเซิร์ฟเวอร์ (ดูตัวอย่างใน .env.example)
---   3) build + restart แอป (npm run build && npm start) เพื่อให้โค้ดใหม่ทำงาน
+--   1) รัน menu-items-seed-2026-08-21.sql แล้วตามด้วย menu-items-seed-2026-08-22.sql
+--      เพื่อเติมข้อมูลเมนูแนะนำ (177 เมนู รวมรูปภาพ ไม่ต้องมี PEXELS_API_KEY แล้ว
+--      เพราะรูปถูก push ขึ้น GitHub มาพร้อมโค้ดแล้ว — แค่ git pull ก็ครบ)
+--   2) build + restart แอป (npm run build && npm start) เพื่อให้โค้ดใหม่ทำงาน
 -- =====================================================================

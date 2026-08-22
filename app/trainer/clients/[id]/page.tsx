@@ -10,6 +10,7 @@ import {
   UtensilsCrossed,
   Mail,
   Phone,
+  Calculator,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import {
@@ -21,6 +22,7 @@ import {
   foodComments,
   clientTags,
   clientTagLinks,
+  calculatorResults,
 } from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
 import {
@@ -55,6 +57,8 @@ import { PointsSummaryCard } from "@/components/points-summary-card";
 import { getGamificationProfile } from "@/lib/gamification";
 
 export const dynamic = "force-dynamic";
+
+const GOAL_LABEL: Record<string, string> = { cut: "ลดไขมัน", maintain: "คงที่", bulk: "เพิ่มกล้าม" };
 
 export default async function ClientProfilePage({
   params,
@@ -122,6 +126,13 @@ export default async function ClientProfilePage({
 
   const gamification = await getGamificationProfile(clientId);
   const earnedBadges = gamification.badges.filter((b) => b.earnedAt);
+
+  const bmiHistory = await db
+    .select()
+    .from(calculatorResults)
+    .where(eq(calculatorResults.clientId, clientId))
+    .orderBy(desc(calculatorResults.createdAt))
+    .limit(10);
 
   // ผลลัพธ์
   const results = await db
@@ -383,6 +394,50 @@ export default async function ClientProfilePage({
           currentStreak={gamification.currentStreak}
           earnedBadges={earnedBadges}
         />
+
+        {/* ประวัติคำนวณ BMI/TDEE */}
+        {bmiHistory.length > 0 && (
+          <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm overflow-hidden">
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-border">
+              <Calculator className="size-4.5 text-primary" />
+              <h3 className="font-semibold">ประวัติคำนวณ BMI/TDEE</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs min-w-[560px]">
+                <thead>
+                  <tr className="text-[11px] text-muted-foreground border-b border-border">
+                    <th className="text-left font-medium px-5 py-2">วันที่</th>
+                    <th className="text-left font-medium px-3 py-2">เป้าหมาย</th>
+                    <th className="text-right font-medium px-3 py-2">BMI</th>
+                    <th className="text-right font-medium px-3 py-2">TDEE</th>
+                    <th className="text-right font-medium px-3 py-2">แคลอรี่</th>
+                    <th className="text-right font-medium px-3 py-2">P</th>
+                    <th className="text-right font-medium px-3 py-2">C</th>
+                    <th className="text-right font-medium px-5 py-2">F</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bmiHistory.map((r) => (
+                    <tr key={r.id} className="border-b border-border last:border-0">
+                      <td className="px-5 py-2 whitespace-nowrap">
+                        {format(r.createdAt, "d MMM yy")}
+                      </td>
+                      <td className="px-3 py-2">{GOAL_LABEL[r.goal] ?? r.goal}</td>
+                      <td className="px-3 py-2 text-right">{r.bmi.toFixed(1)}</td>
+                      <td className="px-3 py-2 text-right">{r.tdee.toLocaleString()}</td>
+                      <td className="px-3 py-2 text-right font-medium">
+                        {r.calories.toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2 text-right">{r.protein}g</td>
+                      <td className="px-3 py-2 text-right">{r.carb}g</td>
+                      <td className="px-5 py-2 text-right">{r.fat}g</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* การมาเทรน */}
         <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm overflow-hidden">

@@ -102,6 +102,17 @@ export async function getMenusByTag(
   return rows.map(toDTO);
 }
 
+/** สุ่มเมนูจากทั้งระบบ N รายการ — ใช้กับวงล้อเสี่ยงโชคเมนู (สุ่มชุดใหม่ทุกครั้งที่โหลดหน้า) */
+export async function getRandomMenus(limit = 10): Promise<MenuItemDTO[]> {
+  const rows = await db
+    .select()
+    .from(menuItems)
+    .where(eq(menuItems.isActive, true))
+    .orderBy(sql`RAND()`)
+    .limit(limit);
+  return rows.map(toDTO);
+}
+
 export type MenuCounts = {
   total: number;
   clean: number;

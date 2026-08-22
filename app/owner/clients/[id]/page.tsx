@@ -10,6 +10,8 @@ import {
   UtensilsCrossed,
   Mail,
   Phone,
+  Trophy,
+  Calculator,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import {
@@ -19,6 +21,9 @@ import {
   sessionResults,
   foodLogs,
   foodComments,
+  clientTags,
+  clientTagLinks,
+  calculatorResults,
 } from "@/lib/db/schema";
 import { requireRole } from "@/lib/authz";
 import {
@@ -34,6 +39,9 @@ import {
   sumTotals,
   type NutritionEntry,
 } from "@/lib/nutrition";
+import { getGamificationProfile } from "@/lib/gamification";
+import { getSiteSettings } from "@/lib/settings";
+import { tagColorClass } from "@/lib/tag-colors";
 import {
   TrainerAttendance,
   type BookingRow,
@@ -46,6 +54,10 @@ import {
   FoodLogCard,
   type FoodLogCardComment,
 } from "@/components/food-log-card";
+import { OwnerGamificationSummary } from "@/components/owner-gamification-summary";
+import { cn } from "@/lib/utils";
+
+const GOAL_LABEL: Record<string, string> = { cut: "ลดไขมัน", maintain: "คงที่", bulk: "เพิ่มกล้าม" };
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +92,24 @@ export default async function OwnerClientDetailPage({
   const [trainer] = client.trainerId
     ? await db.select().from(users).where(eq(users.id, client.trainerId)).limit(1)
     : [undefined];
+
+  const siteSettings = await getSiteSettings();
+  const gamificationProfile = siteSettings.gamificationEnabled
+    ? await getGamificationProfile(clientId)
+    : null;
+
+  const assignedTags = await db
+    .select({ id: clientTags.id, name: clientTags.name, color: clientTags.color })
+    .from(clientTagLinks)
+    .innerJoin(clientTags, eq(clientTags.id, clientTagLinks.tagId))
+    .where(eq(clientTagLinks.clientId, clientId));
+
+  const bmiHistory = await db
+    .select()
+    .from(calculatorResults)
+    .where(eq(calculatorResults.clientId, clientId))
+    .orderBy(desc(calculatorResults.createdAt))
+    .limit(10);
 
   const [profile] = await db
     .select()
@@ -214,9 +244,9 @@ export default async function OwnerClientDetailPage({
         กลับไปลูกเทรนทั้งหมด
       </Link>
 
-      <div className="mb-6">
+      <div className="mb-6 animate-fade-up">
         <div className="flex items-center gap-4">
-          <div className="h-14 w-14 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-semibold overflow-hidden">
+          <div className="h-14 w-14 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-semibold overflow-hidden ring-4 ring-primary/10">
             {client.avatarPath ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -274,32 +304,53 @@ export default async function OwnerClientDetailPage({
             )}
           </div>
         )}
+        {assignedTags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-3">
+            {assignedTags.map((t) => (
+              <span
+                key={t.id}
+                className={cn("text-xs px-2 py-0.5 rounded-full", tagColorClass(t.color))}
+              >
+                {t.name}
+              </span>
+            ))}
+          </div>
+        )}
         <p className="text-xs text-muted-foreground mt-2">มุมมองเจ้าของระบบ (อ่านอย่างเดียว)</p>
       </div>
 
       <div className="space-y-5">
         {/* กราฟผลลัพธ์ */}
-        <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5">
+        <div
+          style={{ "--stagger": 1 } as React.CSSProperties}
+          className="animate-fade-up hover-lift rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5"
+        >
           <div className="flex items-center gap-2 mb-4">
-            <LineChartIcon className="size-4.5 text-primary" />
+            <LineChartIcon className="icon-pop size-4.5 text-primary" />
             <h3 className="font-semibold">แนวโน้มผลลัพธ์</h3>
           </div>
           <ResultsChart data={chartData} />
         </div>
 
         {/* ประวัติบันทึกผลรายวัน */}
-        <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm overflow-hidden">
+        <div
+          style={{ "--stagger": 2 } as React.CSSProperties}
+          className="animate-fade-up hover-lift rounded-[var(--radius-lg)] border border-border bg-card shadow-sm overflow-hidden"
+        >
           <div className="flex items-center gap-2 px-5 py-3 border-b border-border">
-            <NotebookText className="size-4.5 text-primary" />
+            <NotebookText className="icon-pop size-4.5 text-primary" />
             <h3 className="font-semibold">ประวัติบันทึกผล (รายวัน)</h3>
           </div>
           <ResultsLog rows={logRows} />
         </div>
 
         {/* ไดอารี่อาหาร */}
-        <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5">
+        <div
+          style={{ "--stagger": 3 } as React.CSSProperties}
+          className="animate-fade-up hover-lift rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5"
+        >
           <div className="flex items-center gap-2 mb-4">
-            <UtensilsCrossed className="size-4.5 text-primary" />
+            <UtensilsCrossed className="icon-pop size-4.5 text-primary" />
             <h3 className="font-semibold">ไดอารี่อาหาร</h3>
           </div>
 
@@ -360,16 +411,83 @@ export default async function OwnerClientDetailPage({
         </div>
 
         {/* การมาเทรน */}
-        <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm overflow-hidden">
+        <div
+          style={{ "--stagger": 4 } as React.CSSProperties}
+          className="animate-fade-up hover-lift rounded-[var(--radius-lg)] border border-border bg-card shadow-sm overflow-hidden"
+        >
           <div className="flex items-center gap-2 px-5 py-3 border-b border-border">
-            <ClipboardCheck className="size-4.5 text-primary" />
+            <ClipboardCheck className="icon-pop size-4.5 text-primary" />
             <h3 className="font-semibold">การมาเทรน</h3>
           </div>
           <TrainerAttendance bookings={attendance} readOnly />
         </div>
 
+        {/* แต้มสะสม / Streak / Badge */}
+        {gamificationProfile && (
+          <div
+            style={{ "--stagger": 5 } as React.CSSProperties}
+            className="animate-fade-up hover-lift rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Trophy className="icon-pop size-4.5 text-primary" />
+              <h3 className="font-semibold">แต้มสะสม / Streak / Badge</h3>
+            </div>
+            <OwnerGamificationSummary profile={gamificationProfile} />
+          </div>
+        )}
+
+        {/* ประวัติคำนวณ BMI/TDEE */}
+        {bmiHistory.length > 0 && (
+          <div
+            style={{ "--stagger": 6 } as React.CSSProperties}
+            className="animate-fade-up hover-lift rounded-[var(--radius-lg)] border border-border bg-card shadow-sm overflow-hidden"
+          >
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-border">
+              <Calculator className="icon-pop size-4.5 text-primary" />
+              <h3 className="font-semibold">ประวัติคำนวณ BMI/TDEE</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs min-w-[560px]">
+                <thead>
+                  <tr className="text-[11px] text-muted-foreground border-b border-border">
+                    <th className="text-left font-medium px-5 py-2">วันที่</th>
+                    <th className="text-left font-medium px-3 py-2">เป้าหมาย</th>
+                    <th className="text-right font-medium px-3 py-2">BMI</th>
+                    <th className="text-right font-medium px-3 py-2">TDEE</th>
+                    <th className="text-right font-medium px-3 py-2">แคลอรี่</th>
+                    <th className="text-right font-medium px-3 py-2">P</th>
+                    <th className="text-right font-medium px-3 py-2">C</th>
+                    <th className="text-right font-medium px-5 py-2">F</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bmiHistory.map((r) => (
+                    <tr key={r.id} className="border-b border-border last:border-0">
+                      <td className="px-5 py-2 whitespace-nowrap">
+                        {format(r.createdAt, "d MMM yy")}
+                      </td>
+                      <td className="px-3 py-2">{GOAL_LABEL[r.goal] ?? r.goal}</td>
+                      <td className="px-3 py-2 text-right">{r.bmi.toFixed(1)}</td>
+                      <td className="px-3 py-2 text-right">{r.tdee.toLocaleString()}</td>
+                      <td className="px-3 py-2 text-right font-medium">
+                        {r.calories.toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2 text-right">{r.protein}g</td>
+                      <td className="px-3 py-2 text-right">{r.carb}g</td>
+                      <td className="px-5 py-2 text-right">{r.fat}g</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* ประวัติลูกเทรน */}
-        <div className="rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5">
+        <div
+          style={{ "--stagger": 7 } as React.CSSProperties}
+          className="animate-fade-up hover-lift rounded-[var(--radius-lg)] border border-border bg-card shadow-sm p-5"
+        >
           <h3 className="font-semibold mb-4">ประวัติลูกเทรน</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="เป้าหมาย" value={profile?.goals} />

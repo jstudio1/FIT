@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS: Omit<SiteSettings, "id" | "updatedAt"> = {
   chatMaxMessageLength: 2000,
   chatDeleteWindowMin: 5,
   maxUploadSizeMb: 10,
+  loginTheme: "simple",
 };
 
 export async function getSiteSettings(): Promise<
@@ -54,6 +55,7 @@ export async function getSiteSettings(): Promise<
       chatMaxMessageLength: row.chatMaxMessageLength ?? DEFAULT_SETTINGS.chatMaxMessageLength,
       chatDeleteWindowMin: row.chatDeleteWindowMin ?? DEFAULT_SETTINGS.chatDeleteWindowMin,
       maxUploadSizeMb: row.maxUploadSizeMb ?? DEFAULT_SETTINGS.maxUploadSizeMb,
+      loginTheme: row.loginTheme || DEFAULT_SETTINGS.loginTheme,
     };
   } catch {
     return DEFAULT_SETTINGS;

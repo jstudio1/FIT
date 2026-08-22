@@ -43,8 +43,11 @@ dev-err.log
 *.tsbuildinfo
 next-env.d.ts
 
-# food uploads (user data)
-/uploads
+# uploads — real user data (food photos, avatars, popups, chat images) stays out of git
+/uploads/*
+!/uploads/menu
+# menu images ARE tracked: admin-curated stock photos (Pexels), not personal user data —
+# needed so the app has real images out of the box on a fresh clone/deploy
 
 # backup archives
 *.zip
